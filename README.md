@@ -11,17 +11,18 @@ TruthLens is a zero-cost, client-side web application that detects image tamperi
 ## 🎯 Features
 
 ### Current MVP (Phase 1)
+- ✅ **Multi-Provider AI Support** - Choose your preferred backend
+  - 🟢 **TensorFlow.js** (Recommended) - Runs 100% in browser, no API key needed
+  - 🔵 **Hugging Face** - Free tier with state-of-the-art models
+  - 🟣 **Replicate** - Pay-per-use with free credits
 - ✅ **Client-Side Processing** - No backend required, runs entirely in your browser
-- ✅ **Hugging Face Integration** - Direct API calls to state-of-the-art AI models
-- ✅ **Multiple Detection Models**:
-  - AI Image Detector (General)
-  - Deepfake Detection
-  - SDXL/Stable Diffusion Detector
+- ✅ **Multiple Detection Models** per provider
 - ✅ **Real-Time Analysis** - Get results in 10-30 seconds
 - ✅ **Visual Results Dashboard** - Confidence scores, charts, and verdict cards
 - ✅ **Global Intelligence Panel** - Educational threat statistics
-- ✅ **Privacy-First** - Your images never touch our servers
+- ✅ **Privacy-First** - Your images never touch our servers (when using TensorFlow.js)
 - ✅ **Forensic UI** - Professional, scientific aesthetic
+- ✅ **Works Offline** - TensorFlow.js mode works without internet (after initial load)
 
 ### 🔮 Future Phases
 - **Phase 2**: CSS-based simulation of ELA (Error Level Analysis) filters
@@ -33,17 +34,32 @@ TruthLens is a zero-cost, client-side web application that detects image tamperi
 
 ### Prerequisites
 - A modern web browser (Chrome, Firefox, Edge, Safari)
-- A free Hugging Face account ([Sign up here](https://huggingface.co/join))
+- **Optional**: A free API account for enhanced features
+  - [Hugging Face](https://huggingface.co/join) (Recommended for deepfake detection)
+  - [Replicate](https://replicate.com) (Alternative option)
 
 ### Setup (2 minutes)
 
-1. **Get Your API Token**
-   - Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-   - Click "New token"
-   - Name it "TruthLens" and select **Read** permissions
-   - Copy the token (starts with `hf_...`)
+**Option 1: Zero Setup (TensorFlow.js)**
+1. Just open [index.html](index.html) in your browser
+2. Upload an image and analyze!
+3. No API key needed, works 100% offline
 
-2. **Deploy to GitHub Pages**
+**Option 2: With API Providers (More Accurate)**
+
+1. **Get Your API Token** (Choose one):
+   
+   **Hugging Face:**
+   - Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+   - Click "New token" → Name it "TruthLens" → Select **Read** permissions
+   - Copy the token (starts with `hf_...`)
+   
+   **Replicate:**
+   - Go to [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
+   - Click "Create token"
+   - Copy the token (starts with `r8_...`)
+
+2. **Deploy to GitHub Pages** (or just use locally)
    ```bash
    git clone https://github.com/yourusername/truthlens.git
    cd truthlens
@@ -59,11 +75,14 @@ TruthLens is a zero-cost, client-side web application that detects image tamperi
    - Your site will be live at `https://yourusername.github.io/truthlens`
 
 4. **Configure the App**
-   - Open the deployed site
-   - Click "Settings" in the header
-   - Paste your Hugging Face API token
-   - Select a detection model
-   - Click "Save Configuration"
+   - Open the deployed site (or local file)
+   - **For TensorFlow.js**: No configuration needed! Just start uploading images.
+   - **For API providers**: 
+     - Click "Settings" in the header
+     - Select your provider (Hugging Face or Replicate)
+     - Paste your API token
+     - Select a detection model
+     - Click "Save Configuration"
 
 5. **Start Analyzing!**
    - Upload an image (JPG/PNG/WebP, max 10MB)
@@ -76,15 +95,27 @@ TruthLens is a zero-cost, client-side web application that detects image tamperi
 
 ```
 truthlens/
-├── index.html          # Main HTML structure + Tailwind CSS
-├── app.js              # Client-side JavaScript logic
-├── README.md           # This file
-└── LICENSE             # MIT License
+├── index.html                  # Main HTML structure + Tailwind CSS
+├── app.js                      # Client-side JavaScript logic
+├── README.md                   # Main documentation
+├── QUICKSTART.md              # 🚀 Fast setup guide
+├── PROVIDER_COMPARISON.md     # 🔄 Compare AI providers
+├── TROUBLESHOOTING.md         # 🔧 Fix common issues
+├── LICENSE                     # MIT License
+└── .gitignore                 # Git configuration
 ```
 
-**Total Files**: 3  
-**Total Size**: ~30KB (uncompressed)  
+**Total Files**: 8  
+**Total Size**: ~100KB (uncompressed)  
 **Dependencies**: None (all loaded via CDN)
+
+---
+
+## 📚 Documentation
+
+- **Quick Start**: See [QUICKSTART.md](QUICKSTART.md) for 30-second setup
+- **Provider Guide**: See [PROVIDER_COMPARISON.md](PROVIDER_COMPARISON.md) to choose the best AI backend
+- **Troubleshooting**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if something goes wrong
 
 ---
 
@@ -112,9 +143,9 @@ truthlens/
 |-------|------------|
 | **Frontend** | HTML5, Vanilla JavaScript, Tailwind CSS (CDN) |
 | **Visualization** | Chart.js 4.4.1 |
-| **AI Engine** | Hugging Face Inference API (Free Tier) |
-| **Hosting** | GitHub Pages |
-| **Auth** | None (token stored in `localStorage`) |
+| **AI Engines** | TensorFlow.js 4.17 (MobileNet), Hugging Face API, Replicate API |
+| **Hosting** | GitHub Pages (or local file) |
+| **Auth** | None (tokens stored in `localStorage`) |
 | **Database** | None (results are ephemeral) |
 
 ### Future Production Stack
@@ -155,15 +186,27 @@ truthlens/
 
 ## 🧪 Supported Models
 
-TruthLens supports any Hugging Face model with the `image-classification` pipeline. Current presets:
+TruthLens supports multiple AI providers with different models:
 
+### 🟢 TensorFlow.js (No API Key)
+| Model | Specialization | Privacy |
+|-------|----------------|---------|
+| MobileNet | General image classification | 🔒 100% Private (runs in browser) |
+
+### 🔵 Hugging Face
 | Model | Provider | Specialization |
 |-------|----------|----------------|
 | `umm-maybe/AI-image-detector` | umm-maybe | General AI-generated content |
 | `prithivMLmods/Deepfake-Image-Detection` | prithivML | Face swaps & deepfakes |
 | `Organika/sdxl-detector` | Organika | Stable Diffusion XL outputs |
 
-**Add Custom Models**: Edit the `<select>` in `index.html` to add more models from [Hugging Face](https://huggingface.co/models?pipeline_tag=image-classification).
+### 🟣 Replicate
+| Model | Specialization |
+|-------|----------------|
+| BLIP-2 | Image captioning & analysis |
+| BLIP | Image understanding |
+
+**Add Custom Models**: Edit the `PROVIDERS` object in [app.js](app.js) to add more models.
 
 ---
 
@@ -197,7 +240,27 @@ sequenceDiagram
 
 ## 🐛 Troubleshooting
 
-### "Invalid API token" Error
+### General Issues
+
+**"Provider not available" or connection errors**
+- Switch to **TensorFlow.js** mode (works offline, no API needed)
+- Check your internet connection for API-based providers
+- Verify the provider's service status
+
+### TensorFlow.js Issues
+
+**"Model failed to load"**
+- Ensure you have internet for the initial model download
+- Clear browser cache and reload
+- Try a different browser (Chrome recommended)
+
+**Results seem generic**
+- TensorFlow.js uses general image classification, not deepfake-specific
+- For better accuracy, use Hugging Face with specialized models
+
+### Hugging Face Issues
+
+**"Invalid API token" Error**
 - Ensure token starts with `hf_`
 - Check token permissions at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 - Verify token hasn't been revoked
