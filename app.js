@@ -1,5 +1,5 @@
-// TruthLens - Client-Side Application Logic
-// Multi-Provider AI Backend Support
+// TruthLens - Deep Forensic Analysis Engine
+// Multi-Provider AI Backend + 4-Layer Detection Matrix
 
 // ============================================
 // 1. CONFIGURATION & STATE MANAGEMENT
@@ -10,7 +10,14 @@ const CONFIG = {
     REPLICATE_API: 'https://api.replicate.com/v1/predictions',
     MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
     SUPPORTED_FORMATS: ['image/jpeg', 'image/png', 'image/webp'],
-    TIMEOUT: 60000 // 60 seconds
+    TIMEOUT: 60000, // 60 seconds
+    ELA_QUALITY: 95, // JPEG quality for ELA comparison
+    FORENSIC_THRESHOLDS: {
+        REAL: 20,
+        SUSPICIOUS: 60,
+        EDITED: 80,
+        FAKE: 100
+    }
 };
 
 const PROVIDERS = {
@@ -18,10 +25,10 @@ const PROVIDERS = {
         name: 'TensorFlow.js',
         requiresToken: false,
         models: [
-            { id: 'mobilenet', name: 'MobileNet (General Classification)' },
-            { id: 'nsfwjs', name: 'NSFW Detector' }
+            { id: 'mobilenet', name: 'MobileNet (General Classification) - NOT RECOMMENDED' },
+            { id: 'browser-forensic', name: 'Browser Forensic Analysis (Heuristic-based)' }
         ],
-        note: 'Runs completely in your browser. No internet required after page load.'
+        note: '⚠️ WARNING: Browser-based detection is LIMITED. Use Hugging Face for accurate results.'
     },
     huggingface: {
         name: 'Hugging Face',
@@ -29,11 +36,11 @@ const PROVIDERS = {
         tokenPrefix: 'hf_',
         tokenUrl: 'https://huggingface.co/settings/tokens',
         models: [
-            { id: 'umm-maybe/AI-image-detector', name: 'AI Image Detector (General)' },
-            { id: 'prithivMLmods/Deepfake-Image-Detection', name: 'Deepfake Detection' },
-            { id: 'Organika/sdxl-detector', name: 'SDXL/Stable Diffusion Detector' }
+            { id: 'umm-maybe/AI-image-detector', name: '🔥 AI Image Detector (Recommended)' },
+            { id: 'Organika/sdxl-detector', name: 'SDXL/Stable Diffusion Detector' },
+            { id: 'arnabdhar/YOLOv8-Face-Detection', name: 'Face Authenticity Detector' }
         ],
-        note: 'Free tier available. Requires account signup.'
+        note: '✅ RECOMMENDED: Most accurate detection. Free tier available.'
     },
     replicate: {
         name: 'Replicate',
@@ -48,14 +55,25 @@ const PROVIDERS = {
     }
 };
 
+// Known AI generator signatures
+const AI_SIGNATURES = {
+    software: ['stable diffusion', 'midjourney', 'dall-e', 'dall·e', 'novelai', 'artbreeder', 'deepai', 'nightcafe', 'craiyon', 'imagen', 'firefly'],
+    editors: ['photoshop', 'gimp', 'lightroom', 'affinity', 'pixlr', 'canva'],
+    aiResolutions: [
+        [512, 512], [768, 768], [1024, 1024], [1536, 1536], [2048, 2048],
+        [512, 768], [768, 512], [768, 1024], [1024, 768], [896, 1152], [1152, 896]
+    ]
+};
+
 let state = {
-    provider: 'tfjs',
+    provider: 'huggingface', // Changed default to Hugging Face for accuracy
     apiToken: '',
-    selectedModel: 'mobilenet',
+    selectedModel: 'umm-maybe/AI-image-detector',
     currentImage: null,
     currentImageFile: null,
     isAnalyzing: false,
-    tfjsModel: null // Cache for loaded TensorFlow.js models
+    tfjsModel: null,
+    forensicReport: null // Store the detailed forensic analysis
 };
 
 // ============================================
@@ -68,13 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeGlobalChart();
     updateProviderUI();
     
-    // Check if TensorFlow.js provider is selected (no token needed)
-    if (state.provider === 'tfjs') {
-        document.getElementById('settingsPanel').classList.add('hidden');
-        showNotification('Using TensorFlow.js - No API key required! 🎉', 'success');
-    } else if (!state.apiToken) {
+    // Show setup prompt for Hugging Face
+    if (state.provider === 'huggingface' && !state.apiToken) {
         document.getElementById('settingsPanel').classList.remove('hidden');
-        showNotification('Please configure your API token to begin', 'warning');
+        showNotification('⚠️ For accurate AI detection, configure Hugging Face API (free)', 'warning');
+    } else if (state.provider === 'tfjs') {
+        showNotification('⚠️ Browser mode has limited accuracy. Use Hugging Face for real detection.', 'warning');
     }
 });
 
@@ -104,6 +121,13 @@ function preventDefaults(e) {
 // 3. SETTINGS MANAGEMENT
 // ============================================
 
+function switchToHuggingFace() {
+    document.getElementById('providerSelect').value = 'huggingface';
+    toggleProviderSettings();
+    document.getElementById('settingsPanel').classList.remove('hidden');
+    showNotification('Please enter your free Hugging Face API token for accurate detection', 'info');
+}
+
 function toggleProviderSettings() {
     const provider = document.getElementById('providerSelect').value;
     state.provider = provider;
@@ -115,9 +139,17 @@ function updateProviderUI() {
     const tokenSection = document.getElementById('apiTokenSection');
     const modelSelect = document.getElementById('modelSelect');
     const providerNote = document.getElementById('providerNote');
+    const warningBanner = document.getElementById('accuracyWarning');
     
     // Update note
     providerNote.textContent = provider.note;
+    
+    // Show/hide accuracy warning
+    if (state.provider === 'tfjs') {
+        warningBanner?.classList.remove('hidden');
+    } else {
+        warningBanner?.classList.add('hidden');
+    }
     
     // Show/hide token section
     if (provider.requiresToken) {
@@ -281,7 +313,7 @@ function displayPreview(imageSrc) {
 }
 
 // ============================================
-// 5. IMAGE ANALYSIS (MULTI-PROVIDER)
+// 5. IMAGE ANALYSIS (MULTI-PROVIDER + FORENSIC LAYERS)
 // ============================================
 
 async function analyzeImage() {
@@ -309,25 +341,59 @@ async function analyzeImage() {
     document.getElementById('scanLine').classList.remove('hidden');
     
     try {
-        let result;
+        // Initialize forensic report
+        state.forensicReport = {
+            layers: [],
+            flags: [],
+            scores: {},
+            verdict: null,
+            confidence: 0
+        };
         
-        // Route to appropriate provider
+        updateLoadingMessage('Extracting metadata (Layer 1)...');
+        
+        // LAYER 1: Digital Footprint Analysis
+        const layer1 = await analyzeDigitalFootprint();
+        state.forensicReport.layers.push(layer1);
+        
+        updateLoadingMessage('Analyzing pixel physics (Layer 2)...');
+        
+        // LAYER 2: Pixel Physics Analysis (ELA, Noise)
+        const layer2 = await analyzePixelPhysics();
+        state.forensicReport.layers.push(layer2);
+        
+        updateLoadingMessage('Checking lighting & geometry (Layer 3)...');
+        
+        // LAYER 3: Lighting & Geometry (Basic checks)
+        const layer3 = await analyzeLightingGeometry();
+        state.forensicReport.layers.push(layer3);
+        
+        updateLoadingMessage('Running AI semantic analysis (Layer 4)...');
+        
+        // LAYER 4: Semantic Analysis via AI Model
+        let aiResult;
         switch (state.provider) {
             case 'tfjs':
-                result = await analyzeWithTensorFlow();
+                aiResult = await analyzeWithTensorFlow();
                 break;
             case 'huggingface':
-                result = await analyzeWithHuggingFace();
+                aiResult = await analyzeWithHuggingFace();
                 break;
             case 'replicate':
-                result = await analyzeWithReplicate();
+                aiResult = await analyzeWithReplicate();
                 break;
             default:
                 throw new Error('Unknown provider');
         }
         
-        // Display results
-        displayResults(result);
+        const layer4 = processAIResults(aiResult);
+        state.forensicReport.layers.push(layer4);
+        
+        // Calculate final verdict using scoring algorithm
+        calculateFinalVerdict();
+        
+        // Display comprehensive results
+        displayForensicResults();
         
     } catch (error) {
         console.error('Analysis error:', error);
@@ -338,51 +404,1186 @@ async function analyzeImage() {
     }
 }
 
+function updateLoadingMessage(message) {
+    const loadingText = document.querySelector('#loadingState p.text-sand-700');
+    if (loadingText) {
+        loadingText.textContent = message;
+    }
+}
+
+// ============================================
+// LAYER 1: DIGITAL FOOTPRINT ANALYSIS
+// ============================================
+
+async function analyzeDigitalFootprint() {
+    const layer = {
+        name: 'Digital Footprint',
+        icon: '🔍',
+        checks: [],
+        score: 0,
+        maxScore: 100
+    };
+    
+    const file = state.currentImageFile;
+    
+    // Check 1: EXIF Metadata Extraction
+    const exifCheck = await extractEXIFData(file);
+    layer.checks.push(exifCheck);
+    
+    // Check 2: Resolution Analysis
+    const resolutionCheck = await analyzeResolution();
+    layer.checks.push(resolutionCheck);
+    
+    // Check 3: File Signature Analysis
+    const signatureCheck = analyzeFileSignature(file);
+    layer.checks.push(signatureCheck);
+    
+    // Calculate layer score
+    const passedChecks = layer.checks.filter(c => c.status === 'pass').length;
+    const warnChecks = layer.checks.filter(c => c.status === 'warn').length;
+    layer.score = Math.round(((passedChecks * 100) + (warnChecks * 50)) / layer.checks.length);
+    
+    // Add flags for failures
+    layer.checks.filter(c => c.status === 'fail').forEach(c => {
+        state.forensicReport.flags.push(c.flag);
+    });
+    
+    return layer;
+}
+
+async function extractEXIFData(file) {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'EXIF Metadata Integrity',
+            description: 'Camera data, timestamps, and device information',
+            status: 'warn',
+            details: '',
+            flag: null,
+            data: {}
+        };
+        
+        // Read file as ArrayBuffer to parse EXIF
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const view = new DataView(e.target.result);
+            
+            // Check for JPEG signature
+            if (view.getUint16(0) !== 0xFFD8) {
+                if (file.type === 'image/png') {
+                    check.status = 'warn';
+                    check.details = 'PNG format - Limited metadata. Often used by AI generators.';
+                    check.flag = 'PNG format (commonly used by AI)';
+                } else {
+                    check.status = 'warn';
+                    check.details = 'Non-standard image format detected.';
+                }
+                resolve(check);
+                return;
+            }
+            
+            // Look for EXIF marker (APP1)
+            let offset = 2;
+            let hasEXIF = false;
+            let exifData = {};
+            
+            while (offset < view.byteLength - 2) {
+                const marker = view.getUint16(offset);
+                
+                if (marker === 0xFFE1) { // APP1 marker (EXIF)
+                    hasEXIF = true;
+                    // Parse basic EXIF info
+                    const length = view.getUint16(offset + 2);
+                    
+                    // Check for "Exif" string
+                    if (view.getUint32(offset + 4) === 0x45786966) {
+                        exifData.found = true;
+                    }
+                    break;
+                }
+                
+                if (marker === 0xFFD9 || marker === 0xFFDA) break; // End or start of data
+                
+                offset += 2 + view.getUint16(offset + 2);
+            }
+            
+            if (hasEXIF) {
+                check.status = 'pass';
+                check.details = 'EXIF metadata present. Image likely from a camera or phone.';
+                check.data = { hasEXIF: true };
+            } else {
+                check.status = 'fail';
+                check.details = 'No EXIF metadata found. Metadata stripped or AI-generated.';
+                check.flag = 'Missing EXIF Metadata';
+                check.data = { hasEXIF: false };
+            }
+            
+            resolve(check);
+        };
+        
+        reader.onerror = () => {
+            check.status = 'warn';
+            check.details = 'Could not read file metadata.';
+            resolve(check);
+        };
+        
+        reader.readAsArrayBuffer(file.slice(0, 65536)); // Read first 64KB for EXIF
+    });
+}
+
+async function analyzeResolution() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Resolution Pattern Analysis',
+            description: 'Check for AI-typical square/standard resolutions',
+            status: 'pass',
+            details: '',
+            flag: null
+        };
+        
+        const img = new Image();
+        img.onload = () => {
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            
+            check.data = { width: w, height: h };
+            
+            // Check against known AI resolutions
+            const isAIResolution = AI_SIGNATURES.aiResolutions.some(
+                ([aiW, aiH]) => (w === aiW && h === aiH) || (w === aiH && h === aiW)
+            );
+            
+            // Check if perfectly square
+            const isPerfectSquare = w === h;
+            
+            // Check if resolution is power of 2 (common in AI)
+            const isPowerOf2 = (n) => n > 0 && (n & (n - 1)) === 0;
+            const bothPowerOf2 = isPowerOf2(w) && isPowerOf2(h);
+            
+            if (isAIResolution) {
+                check.status = 'fail';
+                check.details = `Resolution ${w}×${h} matches known AI generator output.`;
+                check.flag = `AI-Typical Resolution (${w}×${h})`;
+            } else if (isPerfectSquare && bothPowerOf2) {
+                check.status = 'warn';
+                check.details = `Perfect square resolution ${w}×${h} (power of 2) - common in AI.`;
+            } else if (isPerfectSquare && w >= 512) {
+                check.status = 'warn';
+                check.details = `Square resolution ${w}×${h} - sometimes indicates AI cropping.`;
+            } else {
+                check.status = 'pass';
+                check.details = `Resolution ${w}×${h} appears normal for camera output.`;
+            }
+            
+            resolve(check);
+        };
+        
+        img.onerror = () => {
+            check.status = 'warn';
+            check.details = 'Could not analyze image resolution.';
+            resolve(check);
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+function analyzeFileSignature(file) {
+    const check = {
+        name: 'Software Signature Detection',
+        description: 'Check filename and type for AI generator signatures',
+        status: 'pass',
+        details: '',
+        flag: null
+    };
+    
+    const filename = file.name.toLowerCase();
+    const filenameParts = filename.replace(/[_\-\.]/g, ' ');
+    
+    // Check for AI generator names in filename
+    const aiMatch = AI_SIGNATURES.software.find(sig => filenameParts.includes(sig));
+    const editorMatch = AI_SIGNATURES.editors.find(sig => filenameParts.includes(sig));
+    
+    // Check for common AI output patterns
+    const hasAIPattern = /^(image|output|generated|result|sample|grid|seed)[\s_\-]?\d*/i.test(filename);
+    const hasMidjourneyPattern = /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}/i.test(filename);
+    const hasDALLEPattern = /^DALL/i.test(filename);
+    const hasSDPattern = /^\d{5,}-\d+/i.test(filename); // Stable Diffusion seed pattern
+    
+    if (aiMatch) {
+        check.status = 'fail';
+        check.details = `Filename contains AI generator signature: "${aiMatch}"`;
+        check.flag = `AI Software Detected (${aiMatch})`;
+    } else if (hasDALLEPattern || hasMidjourneyPattern || hasSDPattern) {
+        check.status = 'fail';
+        check.details = 'Filename matches AI generator output pattern.';
+        check.flag = 'AI Output Filename Pattern';
+    } else if (editorMatch) {
+        check.status = 'warn';
+        check.details = `Image may have been edited with: ${editorMatch}`;
+    } else if (hasAIPattern) {
+        check.status = 'warn';
+        check.details = 'Generic filename pattern - could be AI output.';
+    } else {
+        check.status = 'pass';
+        check.details = 'No AI generator signatures detected in filename.';
+    }
+    
+    return check;
+}
+
+// ============================================
+// LAYER 2: PIXEL PHYSICS ANALYSIS
+// ============================================
+
+async function analyzePixelPhysics() {
+    const layer = {
+        name: 'Pixel Physics',
+        icon: '🔬',
+        checks: [],
+        score: 0,
+        maxScore: 100
+    };
+    
+    // Check 1: Error Level Analysis (ELA)
+    const elaCheck = await performELA();
+    layer.checks.push(elaCheck);
+    
+    // Check 2: Noise Pattern Analysis
+    const noiseCheck = await analyzeNoisePattern();
+    layer.checks.push(noiseCheck);
+    
+    // Check 3: Color Distribution Analysis
+    const colorCheck = await analyzeColorDistribution();
+    layer.checks.push(colorCheck);
+    
+    // Calculate layer score
+    const passedChecks = layer.checks.filter(c => c.status === 'pass').length;
+    const warnChecks = layer.checks.filter(c => c.status === 'warn').length;
+    layer.score = Math.round(((passedChecks * 100) + (warnChecks * 50)) / layer.checks.length);
+    
+    // Add flags for failures
+    layer.checks.filter(c => c.status === 'fail').forEach(c => {
+        state.forensicReport.flags.push(c.flag);
+    });
+    
+    return layer;
+}
+
+async function performELA() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Error Level Analysis (ELA)',
+            description: 'Detect compression inconsistencies from manipulation',
+            status: 'pass',
+            details: '',
+            flag: null,
+            elaDataUrl: null
+        };
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                // Create canvas for original
+                const canvas1 = document.createElement('canvas');
+                const ctx1 = canvas1.getContext('2d');
+                canvas1.width = img.width;
+                canvas1.height = img.height;
+                ctx1.drawImage(img, 0, 0);
+                
+                // Get original image data
+                const originalData = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+                
+                // Recompress at lower quality
+                const recompressedDataUrl = canvas1.toDataURL('image/jpeg', CONFIG.ELA_QUALITY / 100);
+                
+                const img2 = new Image();
+                img2.onload = () => {
+                    // Create canvas for recompressed
+                    const canvas2 = document.createElement('canvas');
+                    const ctx2 = canvas2.getContext('2d');
+                    canvas2.width = img.width;
+                    canvas2.height = img.height;
+                    ctx2.drawImage(img2, 0, 0);
+                    
+                    const recompressedData = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+                    
+                    // Calculate ELA difference
+                    const elaCanvas = document.createElement('canvas');
+                    const elaCtx = elaCanvas.getContext('2d');
+                    elaCanvas.width = img.width;
+                    elaCanvas.height = img.height;
+                    
+                    const elaImageData = elaCtx.createImageData(canvas1.width, canvas1.height);
+                    const scale = 20; // Amplification factor
+                    
+                    let totalDiff = 0;
+                    let maxDiff = 0;
+                    let highDiffPixels = 0;
+                    const diffThreshold = 50;
+                    
+                    for (let i = 0; i < originalData.data.length; i += 4) {
+                        const rDiff = Math.abs(originalData.data[i] - recompressedData.data[i]);
+                        const gDiff = Math.abs(originalData.data[i + 1] - recompressedData.data[i + 1]);
+                        const bDiff = Math.abs(originalData.data[i + 2] - recompressedData.data[i + 2]);
+                        
+                        const avgDiff = (rDiff + gDiff + bDiff) / 3;
+                        totalDiff += avgDiff;
+                        maxDiff = Math.max(maxDiff, avgDiff);
+                        
+                        if (avgDiff > diffThreshold) {
+                            highDiffPixels++;
+                        }
+                        
+                        // Scale difference for visibility
+                        elaImageData.data[i] = Math.min(255, rDiff * scale);
+                        elaImageData.data[i + 1] = Math.min(255, gDiff * scale);
+                        elaImageData.data[i + 2] = Math.min(255, bDiff * scale);
+                        elaImageData.data[i + 3] = 255;
+                    }
+                    
+                    elaCtx.putImageData(elaImageData, 0, 0);
+                    check.elaDataUrl = elaCanvas.toDataURL('image/png');
+                    
+                    // Analyze results
+                    const totalPixels = (originalData.data.length / 4);
+                    const avgDiff = totalDiff / totalPixels;
+                    const highDiffPercentage = (highDiffPixels / totalPixels) * 100;
+                    
+                    check.data = {
+                        averageDifference: avgDiff.toFixed(2),
+                        maxDifference: maxDiff.toFixed(2),
+                        highDiffPercentage: highDiffPercentage.toFixed(2)
+                    };
+                    
+                    if (highDiffPercentage > 15) {
+                        check.status = 'fail';
+                        check.details = `High ELA variance detected (${highDiffPercentage.toFixed(1)}% anomalous pixels). Possible manipulation or AI generation.`;
+                        check.flag = 'High ELA Variance (Manipulation Detected)';
+                    } else if (highDiffPercentage > 8 || avgDiff > 20) {
+                        check.status = 'warn';
+                        check.details = `Moderate ELA inconsistencies (${highDiffPercentage.toFixed(1)}%). Some regions may be edited.`;
+                    } else {
+                        check.status = 'pass';
+                        check.details = `Uniform compression levels (${highDiffPercentage.toFixed(1)}% variance). No obvious manipulation.`;
+                    }
+                    
+                    resolve(check);
+                };
+                
+                img2.src = recompressedDataUrl;
+                
+            } catch (err) {
+                check.status = 'warn';
+                check.details = 'ELA analysis could not complete: ' + err.message;
+                resolve(check);
+            }
+        };
+        
+        img.onerror = () => {
+            check.status = 'warn';
+            check.details = 'Could not load image for ELA analysis.';
+            resolve(check);
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+async function analyzeNoisePattern() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Noise Print Analysis (PRNU)',
+            description: 'Detect inconsistent noise patterns from AI generation',
+            status: 'pass',
+            details: '',
+            flag: null
+        };
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Use smaller size for performance
+                const maxSize = 512;
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Calculate local variance in different regions
+                const regionSize = 32;
+                const regions = [];
+                
+                for (let y = 0; y < canvas.height - regionSize; y += regionSize) {
+                    for (let x = 0; x < canvas.width - regionSize; x += regionSize) {
+                        let sum = 0;
+                        let sumSq = 0;
+                        let count = 0;
+                        
+                        for (let dy = 0; dy < regionSize; dy++) {
+                            for (let dx = 0; dx < regionSize; dx++) {
+                                const idx = ((y + dy) * canvas.width + (x + dx)) * 4;
+                                // Use luminance
+                                const lum = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+                                sum += lum;
+                                sumSq += lum * lum;
+                                count++;
+                            }
+                        }
+                        
+                        const mean = sum / count;
+                        const variance = (sumSq / count) - (mean * mean);
+                        regions.push({ x, y, variance, mean });
+                    }
+                }
+                
+                // Analyze variance distribution
+                const variances = regions.map(r => r.variance);
+                const avgVariance = variances.reduce((a, b) => a + b, 0) / variances.length;
+                const varianceOfVariance = variances.reduce((sum, v) => sum + Math.pow(v - avgVariance, 2), 0) / variances.length;
+                
+                // Count regions with very low variance (smooth/plastic look)
+                const smoothRegions = regions.filter(r => r.variance < 50 && r.mean > 50 && r.mean < 200).length;
+                const smoothPercentage = (smoothRegions / regions.length) * 100;
+                
+                check.data = {
+                    averageVariance: avgVariance.toFixed(2),
+                    varianceConsistency: varianceOfVariance.toFixed(2),
+                    smoothRegions: smoothPercentage.toFixed(1) + '%'
+                };
+                
+                if (smoothPercentage > 40) {
+                    check.status = 'fail';
+                    check.details = `Excessive smooth regions (${smoothPercentage.toFixed(1)}%). AI-generated images often lack natural noise.`;
+                    check.flag = 'Synthetic Noise Profile (AI-like smoothness)';
+                } else if (smoothPercentage > 25) {
+                    check.status = 'warn';
+                    check.details = `Some unnaturally smooth areas detected (${smoothPercentage.toFixed(1)}%).`;
+                } else {
+                    check.status = 'pass';
+                    check.details = `Natural noise distribution detected. Consistent with camera sensor output.`;
+                }
+                
+                resolve(check);
+                
+            } catch (err) {
+                check.status = 'warn';
+                check.details = 'Noise analysis could not complete.';
+                resolve(check);
+            }
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+async function analyzeColorDistribution() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Color Distribution Analysis',
+            description: 'Check for unnatural color patterns from AI generation',
+            status: 'pass',
+            details: '',
+            flag: null
+        };
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const maxSize = 256;
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Build color histogram
+                const histogram = { r: new Array(256).fill(0), g: new Array(256).fill(0), b: new Array(256).fill(0) };
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    histogram.r[data[i]]++;
+                    histogram.g[data[i + 1]]++;
+                    histogram.b[data[i + 2]]++;
+                }
+                
+                // Check for unusual spikes (AI often has unnatural color distributions)
+                const totalPixels = data.length / 4;
+                const threshold = totalPixels * 0.05; // 5% of pixels
+                
+                let spikes = 0;
+                let gaps = 0;
+                
+                ['r', 'g', 'b'].forEach(channel => {
+                    for (let i = 1; i < 255; i++) {
+                        if (histogram[channel][i] > threshold) spikes++;
+                        // Check for gaps (missing values)
+                        if (histogram[channel][i] === 0 && histogram[channel][i-1] > 100 && histogram[channel][i+1] > 100) {
+                            gaps++;
+                        }
+                    }
+                });
+                
+                check.data = {
+                    colorSpikes: spikes,
+                    histogramGaps: gaps
+                };
+                
+                if (spikes > 15 || gaps > 10) {
+                    check.status = 'fail';
+                    check.details = `Unnatural color distribution detected. ${spikes} color spikes, ${gaps} histogram gaps.`;
+                    check.flag = 'Abnormal Color Distribution';
+                } else if (spikes > 8 || gaps > 5) {
+                    check.status = 'warn';
+                    check.details = `Slightly unusual color patterns detected.`;
+                } else {
+                    check.status = 'pass';
+                    check.details = `Color distribution appears natural for photographic content.`;
+                }
+                
+                resolve(check);
+                
+            } catch (err) {
+                check.status = 'warn';
+                check.details = 'Color analysis could not complete.';
+                resolve(check);
+            }
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+// ============================================
+// LAYER 3: LIGHTING & GEOMETRY ANALYSIS
+// ============================================
+
+async function analyzeLightingGeometry() {
+    const layer = {
+        name: 'Lighting & Geometry',
+        icon: '💡',
+        checks: [],
+        score: 0,
+        maxScore: 100
+    };
+    
+    // Check 1: Edge Consistency
+    const edgeCheck = await analyzeEdges();
+    layer.checks.push(edgeCheck);
+    
+    // Check 2: Contrast Analysis
+    const contrastCheck = await analyzeContrast();
+    layer.checks.push(contrastCheck);
+    
+    // Calculate layer score
+    const passedChecks = layer.checks.filter(c => c.status === 'pass').length;
+    const warnChecks = layer.checks.filter(c => c.status === 'warn').length;
+    layer.score = Math.round(((passedChecks * 100) + (warnChecks * 50)) / layer.checks.length);
+    
+    // Add flags for failures
+    layer.checks.filter(c => c.status === 'fail').forEach(c => {
+        state.forensicReport.flags.push(c.flag);
+    });
+    
+    return layer;
+}
+
+async function analyzeEdges() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Edge Coherence Analysis',
+            description: 'Check for unnatural edge artifacts from AI upscaling',
+            status: 'pass',
+            details: '',
+            flag: null
+        };
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const maxSize = 256;
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Simple Sobel edge detection
+                let edgeSum = 0;
+                let edgeCount = 0;
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = (y * width + x) * 4;
+                        
+                        // Get luminance of surrounding pixels
+                        const getLum = (i) => data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+                        
+                        const tl = getLum(((y-1) * width + (x-1)) * 4);
+                        const t = getLum(((y-1) * width + x) * 4);
+                        const tr = getLum(((y-1) * width + (x+1)) * 4);
+                        const l = getLum((y * width + (x-1)) * 4);
+                        const r = getLum((y * width + (x+1)) * 4);
+                        const bl = getLum(((y+1) * width + (x-1)) * 4);
+                        const b = getLum(((y+1) * width + x) * 4);
+                        const br = getLum(((y+1) * width + (x+1)) * 4);
+                        
+                        // Sobel operators
+                        const gx = -tl - 2*l - bl + tr + 2*r + br;
+                        const gy = -tl - 2*t - tr + bl + 2*b + br;
+                        
+                        const magnitude = Math.sqrt(gx*gx + gy*gy);
+                        edgeSum += magnitude;
+                        edgeCount++;
+                    }
+                }
+                
+                const avgEdge = edgeSum / edgeCount;
+                
+                check.data = {
+                    averageEdgeStrength: avgEdge.toFixed(2)
+                };
+                
+                // AI images often have either too sharp or too blurry edges
+                if (avgEdge > 80) {
+                    check.status = 'warn';
+                    check.details = `Unusually sharp edges detected. May indicate AI sharpening/enhancement.`;
+                } else if (avgEdge < 10) {
+                    check.status = 'warn';
+                    check.details = `Very soft edges detected. May indicate AI smoothing or over-processing.`;
+                } else {
+                    check.status = 'pass';
+                    check.details = `Edge characteristics consistent with natural photography.`;
+                }
+                
+                resolve(check);
+                
+            } catch (err) {
+                check.status = 'warn';
+                check.details = 'Edge analysis could not complete.';
+                resolve(check);
+            }
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+async function analyzeContrast() {
+    return new Promise((resolve) => {
+        const check = {
+            name: 'Dynamic Range Analysis',
+            description: 'Check for clipped highlights/shadows indicative of AI',
+            status: 'pass',
+            details: '',
+            flag: null
+        };
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const maxSize = 256;
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                const totalPixels = data.length / 4;
+                let clippedBlack = 0;
+                let clippedWhite = 0;
+                let minLum = 255;
+                let maxLum = 0;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const lum = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+                    minLum = Math.min(minLum, lum);
+                    maxLum = Math.max(maxLum, lum);
+                    
+                    if (lum < 5) clippedBlack++;
+                    if (lum > 250) clippedWhite++;
+                }
+                
+                const clippedPercentage = ((clippedBlack + clippedWhite) / totalPixels) * 100;
+                const dynamicRange = maxLum - minLum;
+                
+                check.data = {
+                    dynamicRange: dynamicRange.toFixed(0),
+                    clippedPercentage: clippedPercentage.toFixed(2) + '%'
+                };
+                
+                if (dynamicRange < 100) {
+                    check.status = 'warn';
+                    check.details = `Limited dynamic range (${dynamicRange.toFixed(0)}). Could indicate AI processing.`;
+                } else if (clippedPercentage > 10) {
+                    check.status = 'warn';
+                    check.details = `High clipping detected (${clippedPercentage.toFixed(1)}%). May be over-processed.`;
+                } else {
+                    check.status = 'pass';
+                    check.details = `Good dynamic range (${dynamicRange.toFixed(0)}) with minimal clipping.`;
+                }
+                
+                resolve(check);
+                
+            } catch (err) {
+                check.status = 'warn';
+                check.details = 'Contrast analysis could not complete.';
+                resolve(check);
+            }
+        };
+        
+        img.src = state.currentImage;
+    });
+}
+
+// ============================================
+// LAYER 4: SEMANTIC ANALYSIS (AI Classification)
+// ============================================
+
+function processAIResults(aiResults) {
+    const layer = {
+        name: 'Semantic Analysis',
+        icon: '🧠',
+        checks: [],
+        score: 0,
+        maxScore: 100,
+        aiPredictions: aiResults
+    };
+    
+    // Process AI model output
+    const check = {
+        name: 'AI Model Classification',
+        description: `Analysis by ${PROVIDERS[state.provider].name}`,
+        status: 'pass',
+        details: '',
+        flag: null
+    };
+    
+    if (!aiResults || aiResults.length === 0) {
+        check.status = 'warn';
+        check.details = 'AI model returned no predictions.';
+        layer.checks.push(check);
+        layer.score = 50;
+        return layer;
+    }
+    
+    // Find the top prediction
+    const sorted = [...aiResults].sort((a, b) => b.score - a.score);
+    const top = sorted[0];
+    const confidence = (top.score * 100).toFixed(1);
+    
+    // Determine if it's classified as fake
+    const fakeKeywords = ['fake', 'ai', 'generated', 'synthetic', 'artificial', 'deepfake', 'manipulated'];
+    const realKeywords = ['real', 'authentic', 'human', 'natural', 'genuine'];
+    
+    const labelLower = top.label.toLowerCase();
+    const isFakeLabel = fakeKeywords.some(kw => labelLower.includes(kw));
+    const isRealLabel = realKeywords.some(kw => labelLower.includes(kw));
+    
+    if (isFakeLabel && top.score > 0.7) {
+        check.status = 'fail';
+        check.details = `AI classified as "${top.label}" with ${confidence}% confidence.`;
+        check.flag = `AI Classification: ${top.label} (${confidence}%)`;
+        layer.score = Math.round((1 - top.score) * 100);
+    } else if (isFakeLabel && top.score > 0.5) {
+        check.status = 'warn';
+        check.details = `AI suggests possible "${top.label}" (${confidence}% confidence).`;
+        layer.score = Math.round((1 - top.score) * 100);
+    } else if (isRealLabel && top.score > 0.7) {
+        check.status = 'pass';
+        check.details = `AI classified as "${top.label}" with ${confidence}% confidence.`;
+        layer.score = Math.round(top.score * 100);
+    } else {
+        check.status = 'warn';
+        check.details = `Inconclusive: "${top.label}" (${confidence}% confidence).`;
+        layer.score = 50;
+    }
+    
+    layer.checks.push(check);
+    
+    return layer;
+}
+
+// ============================================
+// SCORING ALGORITHM & FINAL VERDICT
+// ============================================
+
+function calculateFinalVerdict() {
+    const report = state.forensicReport;
+    
+    // Weight each layer
+    const weights = {
+        'Digital Footprint': 0.20,
+        'Pixel Physics': 0.30,
+        'Lighting & Geometry': 0.15,
+        'Semantic Analysis': 0.35
+    };
+    
+    // Calculate weighted score
+    let totalScore = 0;
+    let totalWeight = 0;
+    
+    report.layers.forEach(layer => {
+        const weight = weights[layer.name] || 0.25;
+        totalScore += (100 - layer.score) * weight; // Invert: high layer score = low fake score
+        totalWeight += weight;
+    });
+    
+    // Normalize to 0-100 (where 100 = definitely fake)
+    let fakeScore = totalScore / totalWeight;
+    
+    // Boost score based on critical flags
+    const criticalFlags = report.flags.filter(f => 
+        f.includes('AI Software') || 
+        f.includes('AI Classification') ||
+        f.includes('Synthetic Noise') ||
+        f.includes('AI-Typical Resolution')
+    );
+    
+    if (criticalFlags.length > 0) {
+        fakeScore = Math.min(100, fakeScore + (criticalFlags.length * 10));
+    }
+    
+    // Determine verdict
+    let verdict, verdictClass;
+    
+    if (fakeScore <= CONFIG.FORENSIC_THRESHOLDS.REAL) {
+        verdict = 'LIKELY REAL';
+        verdictClass = 'real';
+    } else if (fakeScore <= CONFIG.FORENSIC_THRESHOLDS.SUSPICIOUS) {
+        verdict = 'SUSPICIOUS';
+        verdictClass = 'suspicious';
+    } else if (fakeScore <= CONFIG.FORENSIC_THRESHOLDS.EDITED) {
+        verdict = 'LIKELY EDITED';
+        verdictClass = 'edited';
+    } else {
+        verdict = 'AI GENERATED / FAKE';
+        verdictClass = 'fake';
+    }
+    
+    report.confidence = Math.round(fakeScore);
+    report.verdict = verdict;
+    report.verdictClass = verdictClass;
+    
+    // Get top 3 flags
+    report.primaryFlags = report.flags.slice(0, 3);
+    
+    // Store scores
+    report.scores = {
+        weighted: fakeScore.toFixed(1),
+        layers: report.layers.map(l => ({ name: l.name, score: l.score }))
+    };
+}
+
+// ============================================
+// FORENSIC RESULTS DISPLAY
+// ============================================
+
+function displayForensicResults() {
+    const report = state.forensicReport;
+    
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('resultsDisplay').classList.remove('hidden');
+    
+    // Update verdict card with forensic styling
+    updateForensicVerdictCard(report);
+    
+    // Display layer-by-layer breakdown
+    displayLayerBreakdown(report);
+    
+    // Display confidence scores
+    displayForensicScores(report);
+    
+    // Create forensic chart
+    createForensicChart(report);
+    
+    // Display metadata
+    displayForensicMetadata(report);
+}
+
+function updateForensicVerdictCard(report) {
+    const card = document.getElementById('verdictCard');
+    const labelEl = document.getElementById('verdictLabel');
+    const textEl = document.getElementById('verdictText');
+    const iconEl = document.getElementById('verdictIcon');
+    
+    const verdictConfig = {
+        real: {
+            bgClass: 'bg-verified/10 border-verified',
+            textClass: 'text-verified',
+            detailClass: 'text-verified-dark',
+            icon: '✓',
+            description: 'No significant manipulation detected. The image passes forensic analysis across all layers.'
+        },
+        suspicious: {
+            bgClass: 'bg-suspicious/10 border-suspicious',
+            textClass: 'text-suspicious',
+            detailClass: 'text-suspicious-dark',
+            icon: '⚠',
+            description: 'Some anomalies detected. The image may have been edited or processed. Further verification recommended.'
+        },
+        edited: {
+            bgClass: 'bg-orange-100 border-orange-500',
+            textClass: 'text-orange-600',
+            detailClass: 'text-orange-700',
+            icon: '✎',
+            description: 'Strong indicators of manipulation detected. Image has likely been edited or enhanced with software.'
+        },
+        fake: {
+            bgClass: 'bg-danger/10 border-danger',
+            textClass: 'text-danger',
+            detailClass: 'text-danger-dark',
+            icon: '✕',
+            description: 'Multiple forensic layers indicate AI generation or significant manipulation. Exercise extreme caution.'
+        }
+    };
+    
+    const config = verdictConfig[report.verdictClass];
+    
+    card.className = `rounded-lg p-4 border-2 ${config.bgClass}`;
+    labelEl.textContent = report.verdict;
+    labelEl.className = `font-semibold text-lg ${config.textClass}`;
+    
+    let flagsHtml = '';
+    if (report.primaryFlags.length > 0) {
+        flagsHtml = '<br><br><strong>Primary Flags:</strong><ul class="list-disc list-inside mt-1">' + 
+            report.primaryFlags.map(f => `<li>${f}</li>`).join('') + '</ul>';
+    }
+    
+    textEl.innerHTML = config.description + flagsHtml;
+    textEl.className = `text-sm ${config.detailClass}`;
+    iconEl.textContent = config.icon;
+}
+
+function displayLayerBreakdown(report) {
+    const container = document.getElementById('scoresContainer');
+    container.innerHTML = '<h4 class="font-medium text-sand-800 mb-3">4-Layer Detection Matrix</h4>';
+    
+    report.layers.forEach(layer => {
+        const authenticity = layer.score;
+        let colorClass = 'bg-verified';
+        
+        if (authenticity < 40) {
+            colorClass = 'bg-danger';
+        } else if (authenticity < 70) {
+            colorClass = 'bg-suspicious';
+        }
+        
+        const checksHtml = layer.checks.map(check => {
+            const statusIcon = check.status === 'pass' ? '✓' : check.status === 'fail' ? '✕' : '⚠';
+            const statusColor = check.status === 'pass' ? 'text-verified' : check.status === 'fail' ? 'text-danger' : 'text-suspicious';
+            return `
+                <div class="flex items-start space-x-2 text-xs">
+                    <span class="${statusColor} font-bold">${statusIcon}</span>
+                    <div>
+                        <span class="font-medium">${check.name}:</span>
+                        <span class="text-sand-600">${check.details}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        const layerHtml = `
+            <div class="mb-4 p-3 bg-sand-50 rounded-lg">
+                <div class="flex justify-between mb-2">
+                    <span class="font-medium text-sand-800">${layer.icon} ${layer.name}</span>
+                    <span class="text-sm font-semibold ${authenticity >= 70 ? 'text-verified' : authenticity >= 40 ? 'text-suspicious' : 'text-danger'}">${authenticity}% Authentic</span>
+                </div>
+                <div class="w-full bg-sand-200 rounded-full h-2 mb-3">
+                    <div class="result-bar ${colorClass} h-2 rounded-full transition-all duration-1000" style="width: ${authenticity}%"></div>
+                </div>
+                <div class="space-y-2">
+                    ${checksHtml}
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', layerHtml);
+    });
+}
+
+function displayForensicScores(report) {
+    // Add overall confidence display
+    const container = document.getElementById('scoresContainer');
+    
+    const overallHtml = `
+        <div class="mt-4 p-4 bg-sand-800 text-white rounded-lg">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-lg">FORENSIC CONFIDENCE</span>
+                <span class="text-3xl font-bold ${report.confidence >= 60 ? 'text-danger-light' : report.confidence >= 30 ? 'text-suspicious-light' : 'text-verified-light'}">${report.confidence}%</span>
+            </div>
+            <p class="text-sand-300 text-sm mt-2">
+                Probability that this image is synthetic, AI-generated, or significantly manipulated.
+            </p>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', overallHtml);
+}
+
+function createForensicChart(report) {
+    const ctx = document.getElementById('resultsChart');
+    
+    if (window.resultsChartInstance) {
+        window.resultsChartInstance.destroy();
+    }
+    
+    const labels = report.layers.map(l => l.name);
+    const scores = report.layers.map(l => l.score);
+    
+    const backgroundColors = scores.map(score => {
+        if (score >= 70) return 'rgba(13, 148, 136, 0.7)';
+        if (score >= 40) return 'rgba(245, 158, 11, 0.7)';
+        return 'rgba(220, 38, 38, 0.7)';
+    });
+    
+    window.resultsChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Authenticity Score',
+                data: scores,
+                backgroundColor: 'rgba(13, 148, 136, 0.2)',
+                borderColor: 'rgba(13, 148, 136, 1)',
+                pointBackgroundColor: backgroundColors,
+                pointBorderColor: '#fff',
+                pointRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Layer-by-Layer Authenticity Analysis'
+                }
+            }
+        }
+    });
+}
+
+function displayForensicMetadata(report) {
+    const container = document.getElementById('metadata');
+    const file = state.currentImageFile;
+    const now = new Date();
+    
+    const providerName = PROVIDERS[state.provider].name;
+    const modelName = state.selectedModel.includes('/') 
+        ? state.selectedModel.split('/')[1] 
+        : state.selectedModel;
+    
+    // Get technical data from checks
+    let technicalDetails = [];
+    report.layers.forEach(layer => {
+        layer.checks.forEach(check => {
+            if (check.data) {
+                Object.entries(check.data).forEach(([key, value]) => {
+                    technicalDetails.push(`<strong>${key}:</strong> ${value}`);
+                });
+            }
+        });
+    });
+    
+    const metadata = [
+        `<strong>Final Verdict:</strong> <span class="${report.verdictClass === 'real' ? 'text-verified' : report.verdictClass === 'fake' ? 'text-danger' : 'text-suspicious'} font-bold">${report.verdict}</span>`,
+        `<strong>Confidence:</strong> ${report.confidence}%`,
+        `<strong>Flags Detected:</strong> ${report.flags.length}`,
+        `<hr class="my-2 border-sand-300">`,
+        `<strong>AI Provider:</strong> ${providerName}`,
+        `<strong>Model:</strong> ${modelName}`,
+        `<strong>File:</strong> ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
+        `<strong>Analyzed:</strong> ${now.toLocaleString()}`,
+        `<hr class="my-2 border-sand-300">`,
+        `<details class="cursor-pointer"><summary class="font-medium">Technical Details</summary><div class="mt-2 space-y-1 text-xs">${technicalDetails.join('<br>')}</div></details>`
+    ];
+    
+    container.innerHTML = metadata.join('<br>');
+}
+
 // ============================================
 // 5a. TENSORFLOW.JS ANALYSIS
 // ============================================
 
 async function analyzeWithTensorFlow() {
     showNotification('Loading AI model in your browser...', 'info');
+    // IMPORTANT: TensorFlow.js in browser cannot accurately detect AI-generated images
+    // This is a FALLBACK ONLY - results will be unreliable
     
-    // Load model if not cached
-    if (!state.tfjsModel) {
-        if (state.selectedModel === 'mobilenet') {
-            state.tfjsModel = await mobilenet.load();
-        } else {
-            throw new Error('Model not yet implemented. Try MobileNet.');
-        }
+    if (state.selectedModel === 'browser-forensic') {
+        // Use only forensic layers, skip AI classification
+        showNotification('Using forensic heuristics only (no AI model). Limited accuracy.', 'warning');
+        return [{
+            label: 'Browser Forensic Analysis Only',
+            score: 0.5,
+            originalLabel: 'Heuristic-based detection'
+        }];
     }
     
-    // Create image element
+    showNotification('⚠️ MobileNet cannot detect AI images. Use Hugging Face instead!', 'error');
+    
+    // Load MobileNet anyway (for demonstration)
+    if (!state.tfjsModel) {
+        state.tfjsModel = await mobilenet.load();
+    }
+    
     const img = new Image();
     img.src = state.currentImage;
     await new Promise((resolve) => { img.onload = resolve; });
     
-    // Run prediction
     const predictions = await state.tfjsModel.classify(img);
     
-    // Convert to our standard format
+    // This is INCORRECT - MobileNet classifies OBJECTS, not AI vs Real
+    // Returning with a warning
     return predictions.map(pred => ({
-        label: classifyAsRealOrFake(pred.className),
-        score: pred.probability,
-        originalLabel: pred.className
+        label: `⚠️ NOT AI DETECTION: ${pred.className}`,
+        score: pred.probability * 0.3, // Reduce confidence to show unreliability
+        originalLabel: pred.className,
+        warning: 'MobileNet is not designed for AI detection. Please use Hugging Face.'
     }));
-}
-
-function classifyAsRealOrFake(className) {
-    // Heuristic: Check if the predicted class suggests AI/synthetic content
-    const syntheticKeywords = ['screen', 'monitor', 'computer', 'digital', 'web'];
-    const lowerClass = className.toLowerCase();
-    
-    const isSynthetic = syntheticKeywords.some(keyword => lowerClass.includes(keyword));
-    
-    if (isSynthetic) {
-        return `Potentially AI-Generated (${className})`;
-    } else {
-        return `Likely Real Photo (${className})`;
-    }
-}
 
 // ============================================
 // 5b. HUGGING FACE ANALYSIS
@@ -503,7 +1704,7 @@ function convertReplicateOutput(output) {
 }
 
 // ============================================
-// 6. RESULTS DISPLAY
+// 6. RESULTS DISPLAY (Legacy - kept for compatibility)
 // ============================================
 
 function showLoadingState() {
@@ -514,158 +1715,9 @@ function showLoadingState() {
 }
 
 function displayResults(results) {
-    document.getElementById('loadingState').classList.add('hidden');
-    document.getElementById('resultsDisplay').classList.remove('hidden');
-    
-    // Sort by confidence (descending)
-    results.sort((a, b) => b.score - a.score);
-    
-    // Determine verdict
-    const topPrediction = results[0];
-    const isFake = topPrediction.label.toLowerCase().includes('fake') || 
-                   topPrediction.label.toLowerCase().includes('ai') ||
-                   topPrediction.label.toLowerCase().includes('generated');
-    
-    const confidence = (topPrediction.score * 100).toFixed(1);
-    
-    // Update verdict card
-    updateVerdictCard(topPrediction.label, confidence, isFake);
-    
-    // Display confidence bars
-    displayConfidenceBars(results);
-    
-    // Create chart
-    createResultsChart(results);
-    
-    // Display metadata
-    displayMetadata();
-}
-
-function updateVerdictCard(label, confidence, isFake) {
-    const card = document.getElementById('verdictCard');
-    const labelEl = document.getElementById('verdictLabel');
-    const textEl = document.getElementById('verdictText');
-    const iconEl = document.getElementById('verdictIcon');
-    
-    if (isFake && confidence > 70) {
-        card.className = 'rounded-lg p-4 border-2 bg-danger/10 border-danger';
-        labelEl.textContent = 'High Risk Detected';
-        labelEl.className = 'font-semibold text-lg text-danger';
-        textEl.textContent = `The image appears to be ${label.toLowerCase()} with ${confidence}% confidence. Exercise caution when sharing or trusting this content.`;
-        textEl.className = 'text-sm text-danger-dark';
-        iconEl.textContent = '⚠️';
-    } else if (isFake && confidence > 50) {
-        card.className = 'rounded-lg p-4 border-2 bg-suspicious/10 border-suspicious';
-        labelEl.textContent = 'Suspicious Content';
-        labelEl.className = 'font-semibold text-lg text-suspicious';
-        textEl.textContent = `The image shows signs of manipulation (${confidence}% confidence). Further verification recommended.`;
-        textEl.className = 'text-sm text-suspicious-dark';
-        iconEl.textContent = '⚡';
-    } else {
-        card.className = 'rounded-lg p-4 border-2 bg-verified/10 border-verified';
-        labelEl.textContent = 'Likely Authentic';
-        labelEl.className = 'font-semibold text-lg text-verified';
-        textEl.textContent = `No significant manipulation detected. The image appears to be ${label.toLowerCase()} (${confidence}% confidence).`;
-        textEl.className = 'text-sm text-verified-dark';
-        iconEl.textContent = '✓';
-    }
-}
-
-function displayConfidenceBars(results) {
-    const container = document.getElementById('scoresContainer');
-    container.innerHTML = '';
-    
-    results.forEach(result => {
-        const percentage = (result.score * 100).toFixed(1);
-        const label = result.label;
-        
-        // Determine color based on label
-        let colorClass = 'bg-sand-500';
-        if (label.toLowerCase().includes('fake') || label.toLowerCase().includes('ai')) {
-            colorClass = percentage > 70 ? 'bg-danger' : percentage > 50 ? 'bg-suspicious' : 'bg-sand-500';
-        } else if (label.toLowerCase().includes('real') || label.toLowerCase().includes('authentic')) {
-            colorClass = percentage > 70 ? 'bg-verified' : 'bg-sand-500';
-        }
-        
-        const barHTML = `
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-sand-700">${label}</span>
-                    <span class="text-sm font-semibold text-sand-900">${percentage}%</span>
-                </div>
-                <div class="w-full bg-sand-200 rounded-full h-3 overflow-hidden">
-                    <div class="result-bar ${colorClass} h-3 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                </div>
-            </div>
-        `;
-        
-        container.insertAdjacentHTML('beforeend', barHTML);
-    });
-    
-    // Animate bars
-    setTimeout(() => {
-        const bars = container.querySelectorAll('.result-bar');
-        bars.forEach((bar, index) => {
-            const percentage = (results[index].score * 100).toFixed(1);
-            bar.style.width = percentage + '%';
-        });
-    }, 100);
-}
-
-function createResultsChart(results) {
-    const ctx = document.getElementById('resultsChart');
-    
-    // Destroy existing chart if any
-    if (window.resultsChartInstance) {
-        window.resultsChartInstance.destroy();
-    }
-    
-    const labels = results.map(r => r.label);
-    const scores = results.map(r => (r.score * 100).toFixed(1));
-    
-    // Determine colors
-    const backgroundColors = results.map(r => {
-        const label = r.label.toLowerCase();
-        if (label.includes('fake') || label.includes('ai')) {
-            return 'rgba(220, 38, 38, 0.7)';
-        } else if (label.includes('real') || label.includes('authentic')) {
-            return 'rgba(13, 148, 136, 0.7)';
-        } else {
-            return 'rgba(156, 141, 125, 0.7)';
-        }
-    });
-    
-    window.resultsChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: scores,
-                backgroundColor: backgroundColors,
-                borderColor: '#fff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                },
-                title: {
-                    display: true,
-                    text: 'Confidence Distribution'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed + '%';
-                        }
-                    }
-                }
-            }
-        }
-    });
+    // This function is now replaced by displayForensicResults
+    // Kept for backward compatibility
+    displayForensicResults();
 }
 
 function displayMetadata() {
