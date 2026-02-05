@@ -37,17 +37,17 @@
                         // Semantic Colors
                         verified: {
                             DEFAULT: '#0d9488',
-                            light: '#14b8a6',
+                            light: '#5eead4',
                             dark: '#0f766e'
                         },
                         suspicious: {
                             DEFAULT: '#f59e0b',
-                            light: '#fbbf24',
+                            light: '#fcd34d',
                             dark: '#d97706'
                         },
                         danger: {
                             DEFAULT: '#dc2626',
-                            light: '#ef4444',
+                            light: '#fca5a5',
                             dark: '#b91c1c'
                         }
                     }
@@ -144,6 +144,24 @@
     </header>
 
     <main class="container mx-auto px-6 py-8">
+        <!-- Accuracy Warning Banner -->
+        <div id="accuracyWarning" class="mb-6 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg">
+            <div class="flex items-start">
+                <svg class="w-6 h-6 text-orange-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <div>
+                    <h3 class="text-orange-800 font-semibold mb-1">⚠️ Accuracy Notice</h3>
+                    <p class="text-orange-700 text-sm mb-2">
+                        <strong>Browser-only mode has limited accuracy.</strong> For professional AI detection, you MUST use Hugging Face API (free).
+                    </p>
+                    <button onclick="switchToHuggingFace()" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded transition">
+                        Switch to Hugging Face (Free, Accurate)
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Settings Panel -->
         <div id="settingsPanel" class="hidden mb-6 bg-white rounded-lg shadow-md p-6 border border-sand-200">
             <h2 class="text-xl font-semibold text-sand-900 mb-4">Configuration</h2>
@@ -243,10 +261,10 @@
                     <svg class="w-6 h-6 mr-2 text-verified" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
-                    Analysis Results
+                    Forensic Analysis Report
                 </h2>
 
-                <div id="resultsContainer">
+                <div id="resultsContainer" class="max-h-[600px] overflow-y-auto">
                     <!-- Placeholder -->
                     <div id="placeholder" class="text-center py-12">
                         <svg class="w-24 h-24 mx-auto text-sand-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -259,8 +277,14 @@
                     <!-- Loading State -->
                     <div id="loadingState" class="hidden text-center py-8">
                         <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sand-200 border-t-verified mb-4"></div>
-                        <p class="text-sand-700 font-medium">Analyzing image...</p>
-                        <p class="text-sm text-sand-500 mt-2">This may take 10-30 seconds</p>
+                        <p class="text-sand-700 font-medium">Initializing forensic analysis...</p>
+                        <p class="text-sm text-sand-500 mt-2">Running 4-layer detection matrix</p>
+                        <div class="mt-4 text-xs text-sand-400 space-y-1">
+                            <p>🔍 Layer 1: Digital Footprint</p>
+                            <p>🔬 Layer 2: Pixel Physics</p>
+                            <p>💡 Layer 3: Lighting & Geometry</p>
+                            <p>🧠 Layer 4: Semantic Analysis</p>
+                        </div>
                     </div>
 
                     <!-- Results Display -->
