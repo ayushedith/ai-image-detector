@@ -39,51 +39,79 @@ export function AnalysisResults({ analysisId }: Props) {
   const getVerdictIcon = () => {
     switch (data.verdict) {
       case 'real':
-        return <CheckCircle2 className="w-12 h-12 text-green-500" />
+        return '✓'
       case 'suspicious':
-        return <AlertTriangle className="w-12 h-12 text-yellow-500" />
+        return '⚠'
       case 'edited':
-        return <AlertTriangle className="w-12 h-12 text-orange-500" />
+        return '⚠'
       case 'fake':
-        return <XCircle className="w-12 h-12 text-red-500" />
+        return '✗'
       default:
-        return <Shield className="w-12 h-12 text-slate-500" />
+        return '—'
+    }
+  }
+
+  const getVerdictColor = (verdict: string) => {
+    switch (verdict) {
+      case 'real':
+        return 'text-[#0022FF]'
+      case 'suspicious':
+        return 'text-yellow-600'
+      case 'edited':
+        return 'text-orange-600'
+      case 'fake':
+        return 'text-[#FF5500]'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
+  const getVerdictBorder = (verdict: string) => {
+    switch (verdict) {
+      case 'real':
+        return 'border-[#0022FF]'
+      case 'fake':
+        return 'border-[#FF5500]'
+      case 'edited':
+        return 'border-orange-600'
+      default:
+        return 'border-yellow-600'
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Verdict Card */}
-      <div className={`rounded-xl p-8 border-2 ${getVerdictBg(data.verdict)}`}>
-        <div className="flex items-center justify-center mb-4">
-          {getVerdictIcon()}
-        </div>
-        <h3 className={`text-3xl font-bold text-center mb-2 ${getVerdictColor(data.verdict)}`}>
+      <div className={`border-4 p-6 text-center bg-white ${getVerdictBorder(data.verdict)}`}>
+        <div className={`text-6xl font-bold mb-3 ${getVerdictColor(data.verdict)}`} style={{fontFamily: 'Archivo Black'}}>
           {data.verdict.toUpperCase()}
-        </h3>
-        <p className="text-center text-slate-300 mb-4">
-          Confidence: {Math.round(data.confidence * 100)}%
-        </p>
-        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all ${
-              data.verdict === 'real'
-                ? 'bg-green-500'
-                : data.verdict === 'suspicious'
-                ? 'bg-yellow-500'
-                : data.verdict === 'edited'
-                ? 'bg-orange-500'
-                : 'bg-red-500'
-            }`}
-            style={{ width: `${data.confidence * 100}%` }}
-          />
+        </div>
+        
+        {/* BLOCK GAUGE */}
+        <div className="my-4">
+          <p className="text-xs font-mono tracking-widest mb-2 text-gray-600">CONFIDENCE</p>
+          <div className="flex gap-1 justify-center mb-2">
+            {Array.from({length: 10}).map((_, i) => (
+              <div
+                key={i}
+                className={`w-5 h-5 border-2 border-black ${
+                  i < Math.round((data.confidence * 10)) 
+                    ? data.verdict === 'fake' ? 'bg-[#FF5500]' : 'bg-[#0022FF]'
+                    : 'bg-white'
+                }`}
+              />
+            ))}
+          </div>
+          <div className={`text-3xl font-bold ${getVerdictColor(data.verdict)}`} style={{fontFamily: 'Archivo Black'}}>
+            {Math.round(data.confidence * 100)}%
+          </div>
         </div>
       </div>
 
       {/* Radar Chart */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-        <h3 className="text-lg font-semibold text-white mb-4">
-          4-Layer Forensic Analysis
+      <div className="border-2 border-black p-4 bg-white">
+        <h3 className="text-xs font-bold tracking-widest border-b border-black pb-2 mb-3">
+          4-LAYER ANALYSIS
         </h3>
         <ForensicRadar data={data} />
       </div>
@@ -91,31 +119,31 @@ export function AnalysisResults({ analysisId }: Props) {
       {/* Layer Details */}
       <LayerDetails layers={data.layers} />
 
-      {/* Metadata */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-        <h3 className="text-lg font-semibold text-white mb-4">Image Metadata</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-400">Format:</span>
-            <span className="text-white">{data.metadata.file_info.format}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Dimensions:</span>
-            <span className="text-white">
-              {data.metadata.file_info.dimensions[0]} × {data.metadata.file_info.dimensions[1]}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Size:</span>
-            <span className="text-white">
-              {Math.round(data.metadata.file_info.size / 1024)} KB
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Processing Time:</span>
-            <span className="text-white">{data.processing_time.toFixed(2)}s</span>
-          </div>
+      {/* Metadata Table */}
+      <div className="border-2 border-black overflow-hidden">
+        <div className="bg-black text-white text-xs font-bold p-2 tracking-widest">
+          METADATA
         </div>
+        <table className="w-full text-xs">
+          <tbody>
+            <tr className="border-t border-black">
+              <td className="font-bold p-2 border-r border-black bg-[#E5E5E5]">FORMAT</td>
+              <td className="p-2 font-mono">{data.metadata.file_info.format}</td>
+            </tr>
+            <tr className="border-t border-black">
+              <td className="font-bold p-2 border-r border-black bg-[#E5E5E5]">SIZE</td>
+              <td className="p-2 font-mono">{Math.round(data.metadata.file_info.size / 1024)} KB</td>
+            </tr>
+            <tr className="border-t border-black">
+              <td className="font-bold p-2 border-r border-black bg-[#E5E5E5]">DIMS</td>
+              <td className="p-2 font-mono">{data.metadata.file_info.dimensions[0]}×{data.metadata.file_info.dimensions[1]}</td>
+            </tr>
+            <tr className="border-t border-black">
+              <td className="font-bold p-2 border-r border-black bg-[#E5E5E5]">TIME</td>
+              <td className="p-2 font-mono">{data.processing_time.toFixed(2)}s</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   )

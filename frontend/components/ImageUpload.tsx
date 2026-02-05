@@ -47,100 +47,75 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
   })
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700">
-      <h2 className="text-2xl font-bold text-white mb-6">Upload Image</h2>
+    <div className="space-y-4">
+      {/* MODEL SELECTOR */}
+      <div>
+        <label className="block text-xs font-bold tracking-widest border-b border-black pb-2 mb-3">MODEL</label>
+        <select className="w-full border-2 border-black p-3 bg-white text-black font-mono text-xs cursor-pointer appearance-none" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '20px', paddingRight: '35px'}}>
+          <option>ENSEMBLE (RECOMMENDED)</option>
+          <option>EFFICIENTNET-B7</option>
+          <option>XCEPTION</option>
+        </select>
+      </div>
 
-      {/* Drop Zone */}
+      {/* UPLOAD ZONE */}
       <div
         {...getRootProps()}
-        className={`
-          border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
-          transition-all duration-200
-          ${
-            isDragActive
-              ? 'border-blue-500 bg-blue-500/10'
-              : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
-          }
-        `}
+        className={`border-4 border-dashed p-12 text-center cursor-pointer transition-all bg-white ${isDragActive ? 'bg-[#0022FF] text-white border-blue-900' : 'border-black hover:bg-[#E5E5E5]'}`}
       >
         <input {...getInputProps()} />
-
+        
         {isPending ? (
-          <div className="flex flex-col items-center">
-            <Loader2 className="w-16 h-16 text-blue-500 animate-spin mb-4" />
-            <p className="text-white font-medium mb-2">Analyzing Image...</p>
-            <p className="text-sm text-slate-400 mb-4">Processing 4-layer forensic analysis</p>
-            <Progress value={65} className="w-64" />
+          <div className="space-y-4">
+            <div className="text-4xl" style={{fontFamily: 'Archivo Black'}}>⏳</div>
+            <p className="font-mono text-xs tracking-widest font-bold">ANALYZING...</p>
+            <div className="w-full bg-black h-2 mt-4">
+              <div className="bg-[#0022FF] h-full animate-pulse" style={{width: '65%'}}></div>
+            </div>
+            <p className="text-xs font-mono text-gray-600">4-LAYER FORENSIC ANALYSIS</p>
           </div>
         ) : isSuccess ? (
-          <div className="flex flex-col items-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-            <p className="text-white font-medium mb-2">Analysis Complete!</p>
-            <p className="text-sm text-slate-400">Check results on the right →</p>
-            <Button
-              onClick={() => {
-                setPreview(null)
-                setFileName('')
-              }}
-              variant="outline"
-              className="mt-4"
-            >
-              Analyze Another Image
-            </Button>
+          <div className="space-y-3">
+            <div className="text-4xl">✓</div>
+            <p className="font-mono text-xs tracking-widest font-bold text-[#0022FF]">COMPLETE</p>
+            <p className="text-xs text-gray-600 font-mono">Results loading →</p>
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-            <p className="text-white font-medium mb-2">Analysis Failed</p>
-            <p className="text-sm text-red-400">{(error as Error).message}</p>
-            <Button
-              onClick={() => {
-                setPreview(null)
-                setFileName('')
-              }}
-              variant="outline"
-              className="mt-4"
-            >
-              Try Again
-            </Button>
+          <div className="space-y-3">
+            <div className="text-4xl">✗</div>
+            <p className="font-mono text-xs tracking-widest font-bold text-[#FF5500]">FAILED</p>
+            <p className="text-xs text-[#FF5500] font-mono">{(error as Error).message}</p>
+            <button onClick={() => { setPreview(null); setFileName(''); }} className="mt-4 border-2 border-[#FF5500] text-[#FF5500] px-4 py-2 font-mono text-xs font-bold hover:bg-[#FF5500] hover:text-white transition">
+              RETRY
+            </button>
           </div>
         ) : preview ? (
-          <div className="flex flex-col items-center">
-            <div className="relative w-64 h-64 mb-4">
+          <div className="space-y-3">
+            <div className="relative w-32 h-32 mx-auto mb-4 border-2 border-black">
               <Image
                 src={preview}
                 alt="Preview"
                 fill
-                className="object-contain rounded-lg"
+                className="object-contain"
               />
             </div>
-            <p className="text-white font-medium">{fileName}</p>
+            <p className="font-mono text-xs break-all">{fileName}</p>
           </div>
         ) : (
           <>
-            <Upload className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <p className="text-white font-medium mb-2">
-              {isDragActive ? 'Drop image here' : 'Drag & drop an image'}
-            </p>
-            <p className="text-sm text-slate-400 mb-4">
-              or click to browse files
-            </p>
-            <p className="text-xs text-slate-500">
-              PNG, JPG, WEBP up to 10MB
-            </p>
+            <div className="text-6xl mb-4" style={{fontFamily: 'Archivo Black'}}>+</div>
+            <p className="font-mono text-xs tracking-widest font-bold">DRAG & DROP</p>
+            <p className="font-mono text-xs text-gray-600 mt-2">OR CLICK TO BROWSE</p>
           </>
         )}
       </div>
 
-      {/* Info */}
-      <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-        <div className="bg-slate-900/50 rounded-lg p-4">
-          <p className="text-slate-400 mb-1">Supported Formats</p>
-          <p className="text-white font-medium">JPG, PNG, WEBP, GIF</p>
-        </div>
-        <div className="bg-slate-900/50 rounded-lg p-4">
-          <p className="text-slate-400 mb-1">Processing Time</p>
-          <p className="text-white font-medium">2-5 seconds</p>
+      {/* INFO BOX */}
+      <div className="border-2 border-black p-4 bg-[#E5E5E5]">
+        <div className="text-xs font-mono space-y-2">
+          <div><strong>MAX SIZE:</strong> 10 MB</div>
+          <div><strong>FORMATS:</strong> JPG, PNG, WEBP</div>
+          <div><strong>TIME:</strong> 2-5 sec</div>
         </div>
       </div>
     </div>

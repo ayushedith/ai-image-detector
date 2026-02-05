@@ -14,82 +14,49 @@ export default function HomePage() {
   const [showSettings, setShowSettings] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-[#F4F4F0] text-black">
       <Header
         onHistoryClick={() => setShowHistory(!showHistory)}
         onSettingsClick={() => setShowSettings(true)}
       />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-4">
-            <Shield className="w-16 h-16 text-blue-400" />
+      <main className="flex h-[calc(100vh-80px)]">
+        {/* LEFT PANEL */}
+        <div className="w-80 border-r-4 border-black p-8 overflow-y-auto bg-[#F4F4F0]">
+          <div className="border-b-2 border-black pb-3 mb-6">
+            <h2 className="text-sm font-bold tracking-widest">INPUT</h2>
           </div>
-          <h1 className="text-5xl font-bold text-white mb-4">
-            TruthLens
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Professional AI Image Detection with 99% Accuracy
-          </p>
-          <p className="text-sm text-slate-400 mt-2">
-            4-Layer Forensic Analysis • Real-time Processing • Enterprise-Grade
-          </p>
+          <ImageUpload onAnalysisComplete={setAnalysisId} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upload Section */}
-          <div className="lg:col-span-2">
-            <ImageUpload onAnalysisComplete={setAnalysisId} />
-          </div>
-
-          {/* Results Section */}
-          <div className="lg:col-span-1">
-            {analysisId ? (
-              <AnalysisResults analysisId={analysisId} />
-            ) : (
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 text-center">
-                <Shield className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400">
-                  Upload an image to begin analysis
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
-          {[
-            {
-              title: 'Digital Footprint',
-              desc: 'EXIF, resolution, software signatures',
-              icon: '🔍',
-            },
-            {
-              title: 'Pixel Physics',
-              desc: 'ELA, noise patterns, compression',
-              icon: '🔬',
-            },
-            {
-              title: 'Lighting & Geometry',
-              desc: 'Edge coherence, shadows, reflections',
-              icon: '💡',
-            },
-            {
-              title: 'AI Semantic',
-              desc: 'Deep learning ensemble models',
-              icon: '🧠',
-            },
-          ].map((feature, i) => (
-            <div
-              key={i}
-              className="bg-slate-800/30 backdrop-blur-sm rounded-lg p-6 border border-slate-700/50 text-center hover:bg-slate-800/50 transition"
-            >
-              <div className="text-4xl mb-3">{feature.icon}</div>
-              <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
-              <p className="text-sm text-slate-400">{feature.desc}</p>
+        {/* CENTER PANEL */}
+        <div className="flex-1 border-r-4 border-black p-8 bg-[repeating-linear-gradient(45deg,#F4F4F0,#F4F4F0_10px,#E5E5E5_10px,#E5E5E5_20px)] flex items-center justify-center overflow-auto">
+          <div className="bg-white border-4 border-black p-6 max-w-[600px] w-full">
+            <div className="text-center text-9xl font-bold opacity-10 mb-4" style={{ fontFamily: 'Archivo Black' }}>
+              TRUTHLENS
             </div>
-          ))}
+            <h1 className="text-4xl font-bold text-center mb-4" style={{ fontFamily: 'Archivo Black' }}>
+              UPLOAD IMAGE
+            </h1>
+            <p className="text-center text-sm text-gray-600 font-mono">
+              4-LAYER FORENSIC ANALYSIS
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div className="w-96 border-l-4 border-black p-8 overflow-y-auto bg-[#F4F4F0]">
+          <div className="border-b-2 border-black pb-3 mb-6">
+            <h2 className="text-sm font-bold tracking-widest">ANALYSIS</h2>
+          </div>
+          {analysisId ? (
+            <AnalysisResults analysisId={analysisId} />
+          ) : (
+            <div className="bg-white border-4 border-black p-6 text-center">
+              <p className="text-xs font-mono tracking-wider">WAITING FOR IMAGE</p>
+              <p className="text-10xl mt-4" style={{ fontFamily: 'Archivo Black' }}>—</p>
+            </div>
+          )}
         </div>
       </main>
 

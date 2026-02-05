@@ -39,68 +39,53 @@ export function LayerDetails({ layers }: Props) {
   ]
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-      <h3 className="text-lg font-semibold text-white mb-4">Layer Breakdown</h3>
+    <div className="border-2 border-black overflow-hidden">
+      <div className="bg-black text-white text-xs font-bold p-2 tracking-widest">
+        LAYER BREAKDOWN
+      </div>
 
-      <div className="space-y-3">
+      <div className="divide-y-2 divide-black">
         {layerInfo.map((info) => {
           const layer = layers[info.key as keyof typeof layers]
           const isExpanded = expanded === info.key
 
           return (
-            <div
-              key={info.key}
-              className="bg-slate-900/50 rounded-lg overflow-hidden"
-            >
+            <div key={info.key}>
               <button
                 onClick={() => setExpanded(isExpanded ? null : info.key)}
-                className="w-full p-4 flex items-center justify-between hover:bg-slate-900/70 transition"
+                className="w-full p-3 flex items-center justify-between bg-white hover:bg-[#E5E5E5] text-left border-0"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{info.icon}</span>
-                  <div className="text-left">
-                    <h4 className="text-white font-medium">{info.name}</h4>
-                    <p className="text-xs text-slate-400">{info.description}</p>
-                  </div>
+                <div>
+                  <p className="text-xs font-bold tracking-widest">{info.name.toUpperCase()}</p>
+                  <p className="text-xs text-gray-600 font-mono mt-1">{info.description}</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-white font-bold">{layer.score}%</p>
-                    <p className="text-xs text-slate-400">
-                      {Math.round(layer.confidence * 100)}% confidence
-                    </p>
-                  </div>
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
-                  )}
+                <div className="text-right flex-shrink-0 ml-4">
+                  <p className="text-lg font-bold" style={{fontFamily: 'Archivo Black'}}>{layer.score}</p>
+                  <p className="text-xs font-mono">{Math.round(layer.confidence * 100)}%</p>
                 </div>
               </button>
 
               {isExpanded && (
-                <div className="px-4 pb-4 space-y-2">
-                  <div className="border-t border-slate-700 pt-3">
-                    <p className="text-sm font-medium text-slate-300 mb-2">Findings:</p>
-                    <ul className="space-y-1">
-                      {layer.findings.map((finding, i) => (
-                        <li key={i} className="text-sm text-slate-400 pl-4">
-                          • {finding}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                <div className="px-3 py-3 bg-[#E5E5E5] border-t-2 border-black">
+                  {layer.findings.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-bold tracking-widest border-b border-black pb-1 mb-2">FINDINGS</p>
+                      <ul className="space-y-1 text-xs font-mono">
+                        {layer.findings.map((finding, i) => (
+                          <li key={i}>✓ {finding}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {Object.keys(layer.details).length > 0 && (
-                    <div className="border-t border-slate-700 pt-3">
-                      <p className="text-sm font-medium text-slate-300 mb-2">Technical Details:</p>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-xs font-bold tracking-widest border-b border-black pb-1 mb-2">DETAILS</p>
+                      <div className="space-y-1 text-xs font-mono">
                         {Object.entries(layer.details).map(([key, value]) => (
-                          <div key={key} className="bg-slate-800/50 rounded p-2">
-                            <p className="text-slate-500">{key}:</p>
-                            <p className="text-slate-300 font-mono">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                            </p>
+                          <div key={key} className="flex justify-between border-b border-black pb-1">
+                            <span>{key}:</span>
+                            <span className="text-right">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                           </div>
                         ))}
                       </div>
