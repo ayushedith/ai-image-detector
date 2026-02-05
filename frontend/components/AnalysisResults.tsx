@@ -15,7 +15,7 @@ export function AnalysisResults({ analysisId }: Props) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['analysis', analysisId],
     queryFn: () => getAnalysis(analysisId),
-    refetchInterval: (data) => (data?.verdict ? false : 2000),
+    refetchInterval: (data: any) => (data?.verdict ? false : 2000),
   })
 
   if (isLoading) {
