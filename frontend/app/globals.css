@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Archivo+Black&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #F4F4F0;
+    --foreground: #000000;
+    --card: #FFFFFF;
+    --card-foreground: #000000;
+    --popover: #FFFFFF;
+    --popover-foreground: #000000;
+    --primary: #0022FF;
+    --primary-foreground: #FFFFFF;
+    --secondary: #E5E5E5;
+    --secondary-foreground: #000000;
+    --muted: #E5E5E5;
+    --muted-foreground: #333333;
+    --accent: #FF5500;
+    --accent-foreground: #FFFFFF;
+    --destructive: #FF5500;
+    --destructive-foreground: #FFFFFF;
+    --border: #000000;
+    --input: #FFFFFF;
+    --ring: #0022FF;
+    --radius: 0px;
+  }
+
+  body {
+    background: #F4F4F0;
+    color: #000000;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Archivo Black', sans-serif;
+    font-weight: 900;
+    letter-spacing: -1px;
+    text-transform: uppercase;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

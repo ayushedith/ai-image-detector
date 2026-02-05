@@ -34,22 +34,22 @@ export function ForensicRadar({ data }: Props) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <RadarChart data={chartData}>
-        <PolarGrid stroke="#475569" />
+        <PolarGrid stroke="#000000" />
         <PolarAngleAxis
           dataKey="layer"
-          tick={{ fill: '#94a3b8', fontSize: 12 }}
+          tick={{ fill: '#000000', fontSize: 11, fontFamily: 'JetBrains Mono' }}
         />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 100]}
-          tick={{ fill: '#64748b', fontSize: 10 }}
+          tick={{ fill: '#333333', fontSize: 10, fontFamily: 'JetBrains Mono' }}
         />
         <Radar
           name="Authenticity Score"
           dataKey="score"
-          stroke="#3b82f6"
-          fill="#3b82f6"
-          fillOpacity={0.6}
+          stroke="#0022FF"
+          fill="#0022FF"
+          fillOpacity={0.3}
         />
       </RadarChart>
     </ResponsiveContainer>

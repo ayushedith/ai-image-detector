@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -36,7 +34,7 @@ services:
   # FastAPI Backend
   backend:
     build:
-      context: ./backend
+      context: ./truthlens-nextjs/backend
       dockerfile: Dockerfile
     container_name: truthlens-backend
     environment:
@@ -44,12 +42,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-change-in-production
       ENVIRONMENT: development
-      HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN}
-      REPLICATE_TOKEN: ${REPLICATE_TOKEN}
+      HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN:-}
+      REPLICATE_TOKEN: ${REPLICATE_TOKEN:-}
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - ./truthlens-nextjs/backend:/app
       - model_cache:/root/.cache/torch
     depends_on:
       postgres:
@@ -58,30 +56,10 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Celery Worker (for async tasks)
-  celery-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: truthlens-worker
-    environment:
-      DATABASE_URL: postgresql://truthlens:truthlens_dev_password@postgres:5432/truthlens
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: dev-secret-key-change-in-production
-      HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN}
-      REPLICATE_TOKEN: ${REPLICATE_TOKEN}
-    volumes:
-      - ./backend:/app
-      - model_cache:/root/.cache/torch
-    depends_on:
-      - postgres
-      - redis
-    command: celery -A app.celery_app worker --loglevel=info
-
   # Next.js Frontend
   frontend:
     build:
-      context: ./frontend
+      context: ./truthlens-nextjs/frontend
       dockerfile: Dockerfile.dev
     container_name: truthlens-frontend
     environment:
@@ -90,7 +68,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app
+      - ./truthlens-nextjs/frontend:/app
       - /app/node_modules
       - /app/.next
     depends_on:
