@@ -726,34 +726,38 @@ async def analyze_image(image: UploadFile = File(...)):
         layer3 = results['lighting_geometry']
         layer4 = results['semantic_analysis']
         
-        # Weighted combination (emphasize pixel and semantic analysis)
+        # Weighted combination (tempered to reduce false positives on real photos)
         overall_score = (
-            layer1['score'] * 0.15 +  # Digital Footprint (15%)
-            layer2['score'] * 0.35 +  # Pixel Physics (35%)
+            layer1['score'] * 0.10 +  # Digital Footprint (10%)
+            layer2['score'] * 0.30 +  # Pixel Physics (30%)
             layer3['score'] * 0.20 +  # Lighting & Geometry (20%)
-            layer4['score'] * 0.30    # AI Semantic (30%)
+            layer4['score'] * 0.40    # AI Semantic (40%)
         )
-        
-        # Apply non-linear scaling to push scores toward extremes
-        # This makes detection more decisive
-        if overall_score > 40:
-            overall_score = 40 + (overall_score - 40) * 1.3
-        
+
+        # Require multiple layers to agree before pushing risk upward
+        high_evidence_layers = sum(1 for s in [layer1['score'], layer2['score'], layer3['score'], layer4['score']] if s >= 45)
+        if high_evidence_layers <= 1:
+            overall_score *= 0.55
+        elif high_evidence_layers == 2:
+            overall_score *= 0.75
+        else:
+            overall_score *= 0.9
+
         overall_score = min(100, overall_score)
         
-        # Verdict thresholds (recalibrated)
-        if overall_score >= 60:
+        # Verdict thresholds (recalibrated more conservatively)
+        if overall_score >= 70:
             verdict = "fake"
-        elif overall_score >= 45:
+        elif overall_score >= 55:
             verdict = "edited"
-        elif overall_score >= 30:
+        elif overall_score >= 40:
             verdict = "suspicious"
         else:
             verdict = "real"
         
-        # Confidence calculation
-        distance_from_center = abs(overall_score - 45)
-        confidence = min(0.55 + distance_from_center / 100, 0.95)
+        # Confidence calculation centered around mid-range risk
+        distance_from_center = abs(overall_score - 50)
+        confidence = min(0.5 + distance_from_center / 120, 0.9)
         
         processing_time = time.time() - start_time
         
