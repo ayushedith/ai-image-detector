@@ -50,7 +50,11 @@ class AdvancedForensicAnalyzer:
     def _to_python(self, val):
         """Convert numpy types to native Python types for JSON serialization"""
         if isinstance(val, (np.floating, np.float32, np.float64)):
-            return float(val)
+            f = float(val)
+            # Handle NaN and Inf
+            if np.isnan(f) or np.isinf(f):
+                return 0.0
+            return f
         elif isinstance(val, (np.integer, np.int32, np.int64)):
             return int(val)
         elif isinstance(val, np.ndarray):
@@ -59,6 +63,10 @@ class AdvancedForensicAnalyzer:
             return {k: self._to_python(v) for k, v in val.items()}
         elif isinstance(val, list):
             return [self._to_python(v) for v in val]
+        elif isinstance(val, float):
+            if np.isnan(val) or np.isinf(val):
+                return 0.0
+            return val
         return val
     
     def analyze(self, img: Image.Image, file_path: str, filename: str) -> Dict:
@@ -395,9 +403,16 @@ class AdvancedForensicAnalyzer:
         g_flat = g[::step, ::step].flatten()
         b_flat = b[::step, ::step].flatten()
         
-        rg_corr = np.corrcoef(r_flat, g_flat)[0, 1]
-        rb_corr = np.corrcoef(r_flat, b_flat)[0, 1]
-        gb_corr = np.corrcoef(g_flat, b_flat)[0, 1]
+        # Safe correlation with NaN handling
+        def safe_corr(a, b):
+            if np.std(a) < 0.01 or np.std(b) < 0.01:
+                return 0.95  # Very uniform = high correlation indicator
+            corr = np.corrcoef(a, b)[0, 1]
+            return 0.0 if np.isnan(corr) else corr
+        
+        rg_corr = safe_corr(r_flat, g_flat)
+        rb_corr = safe_corr(r_flat, b_flat)
+        gb_corr = safe_corr(g_flat, b_flat)
         
         avg_corr = (abs(rg_corr) + abs(rb_corr) + abs(gb_corr)) / 3
         details['channel_correlation'] = round(avg_corr, 3)
