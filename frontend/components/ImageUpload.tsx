@@ -50,48 +50,51 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
     <div className="space-y-4">
       {/* MODEL SELECTOR */}
       <div>
-        <label className="block text-xs font-bold tracking-widest border-b border-black pb-2 mb-3">MODEL</label>
-        <select className="w-full border-2 border-black p-3 bg-white text-black font-mono text-xs cursor-pointer appearance-none" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '20px', paddingRight: '35px'}}>
-          <option>ENSEMBLE (RECOMMENDED)</option>
-          <option>EFFICIENTNET-B7</option>
-          <option>XCEPTION</option>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">INFERENCE STACK</label>
+          <span className="text-[11px] text-primary font-mono">AUTO</span>
+        </div>
+        <select className="w-full rounded-xl border border-border/70 bg-input text-foreground font-mono text-xs cursor-pointer appearance-none px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314f195' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: '42px'}}>
+          <option>Ensemble (recommended)</option>
+          <option>Pixel-focus</option>
+          <option>Semantic-focus</option>
         </select>
       </div>
 
       {/* UPLOAD ZONE */}
       <div
         {...getRootProps()}
-        className={`border-4 border-dashed p-12 text-center cursor-pointer transition-all bg-white ${isDragActive ? 'bg-[#0022FF] text-white border-blue-900' : 'border-black hover:bg-[#E5E5E5]'}`}
+        className={`rounded-2xl border border-dashed p-12 text-center cursor-pointer transition-all bg-gradient-to-br from-[#0f172a] via-[#0c1426] to-[#0b1021] shadow-[0_12px_40px_rgba(0,0,0,0.35)] ${isDragActive ? 'border-primary/70 ring-4 ring-primary/30 text-primary' : 'border-border/80 hover:border-primary/60 hover:shadow-[0_16px_50px_rgba(20,241,149,0.08)]'}`}
       >
         <input {...getInputProps()} />
         
         {isPending ? (
           <div className="space-y-4">
-            <div className="text-4xl" style={{fontFamily: 'Archivo Black'}}>⏳</div>
-            <p className="font-mono text-xs tracking-widest font-bold">ANALYZING...</p>
-            <div className="w-full bg-black h-2 mt-4">
-              <div className="bg-[#0022FF] h-full animate-pulse" style={{width: '65%'}}></div>
+            <div className="text-4xl text-primary" style={{fontFamily: 'Archivo Black'}}>…</div>
+            <p className="font-mono text-xs tracking-[0.2em] font-bold">ANALYZING</p>
+            <div className="w-full h-2 bg-border/50 rounded-full overflow-hidden">
+              <div className="h-full w-3/4 bg-primary animate-pulse" />
             </div>
-            <p className="text-xs font-mono text-gray-600">4-LAYER FORENSIC ANALYSIS</p>
+            <p className="text-[11px] font-mono text-muted-foreground">4-layer forensic sweep</p>
           </div>
         ) : isSuccess ? (
-          <div className="space-y-3">
+          <div className="space-y-3 text-primary">
             <div className="text-4xl">✓</div>
-            <p className="font-mono text-xs tracking-widest font-bold text-[#0022FF]">COMPLETE</p>
-            <p className="text-xs text-gray-600 font-mono">Results loading →</p>
+            <p className="font-mono text-xs tracking-[0.2em] font-bold">COMPLETE</p>
+            <p className="text-[11px] text-muted-foreground font-mono">Rendering results →</p>
           </div>
         ) : isError ? (
-          <div className="space-y-3">
+          <div className="space-y-3 text-destructive">
             <div className="text-4xl">✗</div>
-            <p className="font-mono text-xs tracking-widest font-bold text-[#FF5500]">FAILED</p>
-            <p className="text-xs text-[#FF5500] font-mono">{(error as Error).message}</p>
-            <button onClick={() => { setPreview(null); setFileName(''); }} className="mt-4 border-2 border-[#FF5500] text-[#FF5500] px-4 py-2 font-mono text-xs font-bold hover:bg-[#FF5500] hover:text-white transition">
+            <p className="font-mono text-xs tracking-[0.2em] font-bold">FAILED</p>
+            <p className="text-[11px] text-destructive font-mono">{(error as Error).message}</p>
+            <button onClick={() => { setPreview(null); setFileName(''); }} className="mt-4 border border-destructive text-destructive px-4 py-2 font-mono text-[11px] font-bold rounded-lg hover:bg-destructive hover:text-foreground transition">
               RETRY
             </button>
           </div>
         ) : preview ? (
           <div className="space-y-3">
-            <div className="relative w-32 h-32 mx-auto mb-4 border-2 border-black">
+            <div className="relative w-32 h-32 mx-auto mb-4 rounded-xl border border-border/70 overflow-hidden">
               <Image
                 src={preview}
                 alt="Preview"
@@ -99,23 +102,30 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
                 className="object-contain"
               />
             </div>
-            <p className="font-mono text-xs break-all">{fileName}</p>
+            <p className="font-mono text-[11px] break-all text-muted-foreground">{fileName}</p>
           </div>
         ) : (
           <>
-            <div className="text-6xl mb-4" style={{fontFamily: 'Archivo Black'}}>+</div>
-            <p className="font-mono text-xs tracking-widest font-bold">DRAG & DROP</p>
-            <p className="font-mono text-xs text-gray-600 mt-2">OR CLICK TO BROWSE</p>
+            <div className="text-6xl mb-4 text-foreground" style={{fontFamily: 'Archivo Black'}}>+</div>
+            <p className="font-mono text-xs tracking-[0.22em] font-bold">DROP IMAGE</p>
+            <p className="font-mono text-[11px] text-muted-foreground mt-2">or click to browse</p>
           </>
         )}
       </div>
 
       {/* INFO BOX */}
-      <div className="border-2 border-black p-4 bg-[#E5E5E5]">
-        <div className="text-xs font-mono space-y-2">
-          <div><strong>MAX SIZE:</strong> 10 MB</div>
-          <div><strong>FORMATS:</strong> JPG, PNG, WEBP</div>
-          <div><strong>TIME:</strong> 2-5 sec</div>
+      <div className="rounded-xl border border-border/70 bg-secondary/70 p-4 text-[11px] font-mono text-muted-foreground">
+        <div className="flex items-center justify-between mb-2">
+          <span>Max size</span>
+          <span className="text-foreground">10 MB</span>
+        </div>
+        <div className="flex items-center justify-between mb-2">
+          <span>Formats</span>
+          <span className="text-foreground">JPG · PNG · WEBP</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>ETA</span>
+          <span className="text-foreground">2–5 sec</span>
         </div>
       </div>
     </div>
