@@ -6,6 +6,7 @@ import { AnalysisResults } from '@/components/AnalysisResults'
 import { Header } from '@/components/Header'
 import { HistorySidebar } from '@/components/HistorySidebar'
 import { SettingsDialog } from '@/components/SettingsDialog'
+import { Footer } from '@/components/Footer'
 import { Shield, Zap, Sparkles, Cpu, Workflow } from 'lucide-react'
 
 export default function HomePage() {
@@ -17,9 +18,9 @@ export default function HomePage() {
     <div className="min-h-screen text-foreground relative overflow-hidden">
       {/* atmospheric glow */}
       <div className="pointer-events-none absolute inset-0 mix-blend-screen opacity-70">
-        <div className="absolute -left-10 top-10 h-64 w-64 rounded-full bg-[#14f195]/20 blur-3xl" />
-        <div className="absolute right-10 top-32 h-52 w-52 rounded-full bg-[#7c3aed]/20 blur-3xl" />
-        <div className="absolute left-1/3 bottom-10 h-72 w-72 rounded-full bg-blue-500/15 blur-3xl" />
+        <div className="absolute -left-10 top-10 h-64 w-64 rounded-full bg-[#212842]/18 blur-3xl" />
+        <div className="absolute right-10 top-32 h-52 w-52 rounded-full bg-[#b6ab95]/30 blur-3xl" />
+        <div className="absolute left-1/3 bottom-10 h-72 w-72 rounded-full bg-[#212842]/12 blur-3xl" />
       </div>
 
       <Header
@@ -37,7 +38,7 @@ export default function HomePage() {
                   <p className="text-xs tracking-[0.2em] text-muted-foreground">INGEST</p>
                   <h2 className="text-xl">Drop evidence</h2>
                 </div>
-                <div className="h-11 w-11 rounded-xl border border-border/60 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <div className="h-11 w-11 rounded-xl border border-border/60 bg-gradient-to-br from-primary/15 to-secondary/40 flex items-center justify-center">
                   <Shield className="w-5 h-5 text-primary" />
                 </div>
               </div>
@@ -46,7 +47,7 @@ export default function HomePage() {
 
             <div className="rounded-2xl border border-border/60 bg-secondary/60 backdrop-blur-xl p-4">
               <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <Zap className="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -65,8 +66,8 @@ export default function HomePage() {
 
           {/* CENTER: Mission panel */}
           <section className="col-span-12 lg:col-span-4 space-y-4">
-            <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-[#11172c] via-[#0d1224] to-[#0b1021] p-6 shadow-[0_10px_60px_rgba(0,0,0,0.45)] relative overflow-hidden">
-              <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 25%, transparent 50%, rgba(255,255,255,0.04) 75%, transparent 100%)', backgroundSize: '18px 18px'}} />
+            <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-[#f9f3e4] via-[#ede2ce] to-[#d8cfbc] p-6 shadow-[0_10px_40px_rgba(33,40,66,0.18)] relative overflow-hidden">
+              <div className="absolute inset-0 opacity-35" style={{backgroundImage: 'linear-gradient(135deg, rgba(33,40,66,0.08) 0%, transparent 25%, transparent 50%, rgba(33,40,66,0.08) 75%, transparent 100%)', backgroundSize: '18px 18px'}} />
               <div className="relative flex items-start justify-between">
                 <div className="max-w-[70%] space-y-3">
                   <p className="text-xs tracking-[0.24em] text-muted-foreground">TRUTHLENS LAB</p>
@@ -78,7 +79,7 @@ export default function HomePage() {
                     ))}
                   </div>
                 </div>
-                <div className="h-14 w-14 rounded-2xl border border-primary/40 bg-primary/10 text-primary flex items-center justify-center">
+                <div className="h-14 w-14 rounded-2xl border border-primary/30 bg-primary/10 text-primary flex items-center justify-center">
                   <Sparkles className="w-6 h-6" />
                 </div>
               </div>
@@ -123,6 +124,8 @@ export default function HomePage() {
         open={showSettings}
         onOpenChange={setShowSettings}
       />
+
+      <Footer />
     </div>
   )
 }

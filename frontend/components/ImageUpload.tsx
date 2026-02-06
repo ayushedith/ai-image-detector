@@ -54,7 +54,7 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
           <label className="block text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">INFERENCE STACK</label>
           <span className="text-[11px] text-primary font-mono">AUTO</span>
         </div>
-        <select className="w-full rounded-xl border border-border/70 bg-input text-foreground font-mono text-xs cursor-pointer appearance-none px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314f195' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: '42px'}}>
+        <select className="w-full rounded-xl border border-border/70 bg-input text-foreground font-mono text-xs cursor-pointer appearance-none px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40 transition" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212842' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: '42px'}}>
           <option>Ensemble (recommended)</option>
           <option>Pixel-focus</option>
           <option>Semantic-focus</option>
@@ -64,7 +64,7 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
       {/* UPLOAD ZONE */}
       <div
         {...getRootProps()}
-        className={`rounded-2xl border border-dashed p-12 text-center cursor-pointer transition-all bg-gradient-to-br from-[#0f172a] via-[#0c1426] to-[#0b1021] shadow-[0_12px_40px_rgba(0,0,0,0.35)] ${isDragActive ? 'border-primary/70 ring-4 ring-primary/30 text-primary' : 'border-border/80 hover:border-primary/60 hover:shadow-[0_16px_50px_rgba(20,241,149,0.08)]'}`}
+        className={`rounded-2xl border border-dashed p-12 text-center cursor-pointer transition-all bg-gradient-to-br from-[#fdf8ef] via-[#f4ead8] to-[#e8ddc7] shadow-[0_12px_36px_rgba(33,40,66,0.12)] ${isDragActive ? 'border-primary/70 ring-4 ring-primary/20 text-primary' : 'border-border/80 hover:border-primary/60 hover:shadow-[0_16px_44px_rgba(33,40,66,0.16)]'}`}
       >
         <input {...getInputProps()} />
         
@@ -106,15 +106,15 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
           </div>
         ) : (
           <>
-            <div className="text-6xl mb-4 text-foreground" style={{fontFamily: 'Archivo Black'}}>+</div>
-            <p className="font-mono text-xs tracking-[0.22em] font-bold">DROP IMAGE</p>
+            <div className="text-6xl mb-4 text-primary" style={{fontFamily: 'Archivo Black'}}>+</div>
+            <p className="font-mono text-xs tracking-[0.22em] font-bold text-primary">DROP IMAGE</p>
             <p className="font-mono text-[11px] text-muted-foreground mt-2">or click to browse</p>
           </>
         )}
       </div>
 
       {/* INFO BOX */}
-      <div className="rounded-xl border border-border/70 bg-secondary/70 p-4 text-[11px] font-mono text-muted-foreground">
+      <div className="rounded-xl border border-border/70 bg-secondary/80 p-4 text-[11px] font-mono text-muted-foreground">
         <div className="flex items-center justify-between mb-2">
           <span>Max size</span>
           <span className="text-foreground">10 MB</span>
