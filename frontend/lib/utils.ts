@@ -8,30 +8,30 @@ export function cn(...inputs: ClassValue[]) {
 export function getVerdictColor(verdict: string): string {
   switch (verdict) {
     case 'real':
-      return 'text-green-500'
+      return 'text-emerald-700'
     case 'suspicious':
-      return 'text-yellow-500'
+      return 'text-amber-700'
     case 'edited':
-      return 'text-orange-500'
+      return 'text-orange-700'
     case 'fake':
-      return 'text-red-500'
+      return 'text-red-700'
     default:
-      return 'text-slate-500'
+      return 'text-slate-600'
   }
 }
 
 export function getVerdictBg(verdict: string): string {
   switch (verdict) {
     case 'real':
-      return 'bg-green-500/10 border-green-500/20'
+      return 'bg-emerald-50 border-emerald-200'
     case 'suspicious':
-      return 'bg-yellow-500/10 border-yellow-500/20'
+      return 'bg-amber-50 border-amber-200'
     case 'edited':
-      return 'bg-orange-500/10 border-orange-500/20'
+      return 'bg-orange-50 border-orange-200'
     case 'fake':
-      return 'bg-red-500/10 border-red-500/20'
+      return 'bg-red-50 border-red-200'
     default:
-      return 'bg-slate-500/10 border-slate-500/20'
+      return 'bg-slate-50 border-slate-200'
   }
 }
 
