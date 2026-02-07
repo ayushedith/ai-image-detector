@@ -4,9 +4,7 @@ import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useMutation } from '@tanstack/react-query'
 import { analyzeImage } from '@/lib/api'
-import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { Upload, Loader2, CheckCircle2, AlertCircle, Shield, Timer, HardDrive, Info } from 'lucide-react'
 import Image from 'next/image'
 
 interface Props {
@@ -16,11 +14,16 @@ interface Props {
 export function ImageUpload({ onAnalysisComplete }: Props) {
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
+  const [errorDetail, setErrorDetail] = useState<string | null>(null)
 
   const { mutate, isPending, isSuccess, isError, error } = useMutation({
     mutationFn: analyzeImage,
     onSuccess: (data) => {
       onAnalysisComplete(data.id)
+      setErrorDetail(null)
+    },
+    onError: (err: any) => {
+      setErrorDetail(err?.message || 'Upload failed. Please try again.')
     },
   })
 
@@ -30,6 +33,7 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
 
     setFileName(file.name)
     setPreview(URL.createObjectURL(file))
+    setErrorDetail(null)
 
     const formData = new FormData()
     formData.append('image', file)
@@ -48,28 +52,29 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* MODEL SELECTOR */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">INFERENCE STACK</label>
-          <span className="text-[11px] text-primary font-mono">AUTO</span>
-        </div>
-        <select className="w-full rounded-xl border border-border/70 bg-input text-foreground font-mono text-xs cursor-pointer appearance-none px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/40 transition" style={{backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212842' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: '42px'}}>
-          <option>Ensemble (recommended)</option>
-          <option>Pixel-focus</option>
-          <option>Semantic-focus</option>
-        </select>
+      <div className="grid grid-cols-3 gap-2 text-[11px] font-mono text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-secondary/70 px-3 py-2"><Shield className="w-4 h-4 text-primary" /> Secured ingest</div>
+        <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-secondary/70 px-3 py-2"><Timer className="w-4 h-4 text-primary" /> SLA 2–5s</div>
+        <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-secondary/70 px-3 py-2"><HardDrive className="w-4 h-4 text-primary" /> Max 10MB</div>
       </div>
 
-      {/* UPLOAD ZONE */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground">INFERENCE STACK</p>
+          <p className="text-sm text-muted-foreground">Auto-selects best ensemble for authenticity.</p>
+        </div>
+        <span className="text-[11px] text-primary font-mono px-3 py-1 rounded-md border border-primary/30 bg-primary/10">AUTO</span>
+      </div>
+
       <div
         {...getRootProps()}
-        className={`rounded-2xl border border-dashed p-12 text-center cursor-pointer transition-all bg-gradient-to-br from-[#fdf8ef] via-[#f4ead8] to-[#e8ddc7] shadow-[0_12px_36px_rgba(33,40,66,0.12)] ${isDragActive ? 'border-primary/70 ring-4 ring-primary/20 text-primary' : 'border-border/80 hover:border-primary/60 hover:shadow-[0_16px_44px_rgba(33,40,66,0.16)]'}`}
+        className={`rounded-2xl border border-dashed p-10 text-center cursor-pointer transition-all bg-gradient-to-br from-[#fdf8ef] via-[#f4ead8] to-[#e8ddc7] shadow-[0_12px_36px_rgba(33,40,66,0.12)] ${isDragActive ? 'border-primary/70 ring-4 ring-primary/20 text-primary' : 'border-border/80 hover:border-primary/60 hover:shadow-[0_16px_44px_rgba(33,40,66,0.16)]'}`}
+        aria-label="Upload image"
       >
         <input {...getInputProps()} />
-        
+
         {isPending ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-4xl text-primary" style={{fontFamily: 'Archivo Black'}}>…</div>
             <p className="font-mono text-xs tracking-[0.2em] font-bold">ANALYZING</p>
             <div className="w-full h-2 bg-border/50 rounded-full overflow-hidden">
@@ -79,16 +84,20 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
           </div>
         ) : isSuccess ? (
           <div className="space-y-3 text-primary">
-            <div className="text-4xl">✓</div>
+            <CheckCircle2 className="w-8 h-8 mx-auto" />
             <p className="font-mono text-xs tracking-[0.2em] font-bold">COMPLETE</p>
             <p className="text-[11px] text-muted-foreground font-mono">Rendering results →</p>
           </div>
         ) : isError ? (
           <div className="space-y-3 text-destructive">
-            <div className="text-4xl">✗</div>
+            <AlertCircle className="w-8 h-8 mx-auto" />
             <p className="font-mono text-xs tracking-[0.2em] font-bold">FAILED</p>
             <p className="text-[11px] text-destructive font-mono">{(error as Error).message}</p>
-            <button onClick={() => { setPreview(null); setFileName(''); }} className="mt-4 border border-destructive text-destructive px-4 py-2 font-mono text-[11px] font-bold rounded-lg hover:bg-destructive hover:text-foreground transition">
+            {errorDetail && <p className="text-[11px] text-muted-foreground">{errorDetail}</p>}
+            <button
+              onClick={() => { setPreview(null); setFileName(''); setErrorDetail(null); }}
+              className="mt-2 border border-destructive text-destructive px-4 py-2 font-mono text-[11px] font-bold rounded-lg hover:bg-destructive hover:text-foreground transition"
+            >
               RETRY
             </button>
           </div>
@@ -103,29 +112,25 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
               />
             </div>
             <p className="font-mono text-[11px] break-all text-muted-foreground">{fileName}</p>
+            <p className="text-[11px] text-muted-foreground">Drop again to replace.</p>
           </div>
         ) : (
           <>
             <div className="text-6xl mb-4 text-primary" style={{fontFamily: 'Archivo Black'}}>+</div>
             <p className="font-mono text-xs tracking-[0.22em] font-bold text-primary">DROP IMAGE</p>
             <p className="font-mono text-[11px] text-muted-foreground mt-2">or click to browse</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">JPG · PNG · WEBP · GIF · 10MB limit</p>
           </>
         )}
       </div>
 
-      {/* INFO BOX */}
-      <div className="rounded-xl border border-border/70 bg-secondary/80 p-4 text-[11px] font-mono text-muted-foreground">
-        <div className="flex items-center justify-between mb-2">
-          <span>Max size</span>
-          <span className="text-foreground">10 MB</span>
-        </div>
-        <div className="flex items-center justify-between mb-2">
-          <span>Formats</span>
-          <span className="text-foreground">JPG · PNG · WEBP</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>ETA</span>
-          <span className="text-foreground">2–5 sec</span>
+      <div className="rounded-xl border border-border/70 bg-secondary/80 p-4 text-[11px] font-mono text-muted-foreground space-y-2">
+        <div className="flex items-center gap-2 text-foreground"><Info className="w-4 h-4 text-primary" /> Guidance</div>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div className="rounded-lg border border-border/60 bg-card/70 p-2">Use originals when possible; avoid screenshots.</div>
+          <div className="rounded-lg border border-border/60 bg-card/70 p-2">Faces and textures yield stronger signals.</div>
+          <div className="rounded-lg border border-border/60 bg-card/70 p-2">We keep files transiently; no persistence.</div>
+          <div className="rounded-lg border border-border/60 bg-card/70 p-2">ETA 2–5s depending on resolution.</div>
         </div>
       </div>
     </div>
