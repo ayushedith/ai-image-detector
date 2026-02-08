@@ -108,7 +108,7 @@ export function AnalysisResults({ analysisId }: Props) {
                 {Math.round(data.confidence * 100)}% confidence
               </span>
               <span className="px-2 py-1 rounded-full text-[11px] font-mono border border-border/70 bg-secondary/40 text-muted-foreground">
-                {formatDistanceToNow(new Date(data.created_at), { addSuffix: true })}
+                {data.created_at && !isNaN(new Date(data.created_at).getTime()) ? formatDistanceToNow(new Date(data.created_at), { addSuffix: true }) : "Just analyzed"}
               </span>
             </div>
             <p className="text-lg font-semibold text-foreground">Verdict: {palette.label}</p>
@@ -162,7 +162,7 @@ export function AnalysisResults({ analysisId }: Props) {
             </div>
             <div>
               <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">SESSION</p>
-              <p className="font-mono text-foreground">{format(new Date(data.created_at), 'MMM d, HH:mm')}</p>
+              <p className="font-mono text-foreground">{data.created_at && !isNaN(new Date(data.created_at).getTime()) ? format(new Date(data.created_at), 'MMM d, HH:mm') : 'Just now'}</p>
               <p className="text-[11px] text-muted-foreground">ID {data.id.slice(0, 8)}…</p>
             </div>
           </div>
@@ -197,7 +197,7 @@ export function AnalysisResults({ analysisId }: Props) {
             <p className="text-sm text-muted-foreground">Scores per forensic channel.</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock3 className="w-4 h-4" /> Updated {formatDistanceToNow(new Date(data.created_at), { addSuffix: true })}
+            <Clock3 className="w-4 h-4" /> Updated {data.created_at && !isNaN(new Date(data.created_at).getTime()) ? formatDistanceToNow(new Date(data.created_at), { addSuffix: true }) : 'just now'}
           </div>
         </div>
         <ForensicRadar data={data} />

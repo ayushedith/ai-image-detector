@@ -767,6 +767,7 @@ async def analyze_image(image: UploadFile = File(...)):
             "confidence": round(confidence, 2),
             "overall_score": round(overall_score, 1),
             "processing_time": round(processing_time, 3),
+            "created_at": datetime.now().isoformat(),
             "layers": {
                 "digital_footprint": layer1,
                 "pixel_physics": layer2,
