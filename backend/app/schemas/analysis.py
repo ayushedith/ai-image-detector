@@ -20,6 +20,7 @@ class AnalysisMetadata(BaseModel):
 
 class AnalysisResponse(BaseModel):
     id: str
+    filename: str
     verdict: str
     confidence: float
     overall_score: float
@@ -27,6 +28,7 @@ class AnalysisResponse(BaseModel):
     metadata: AnalysisMetadata
     processing_time: float
     created_at: datetime
+    image_url: str | None
 
     class Config:
         from_attributes = True

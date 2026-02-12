@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -46,6 +47,9 @@ app.add_middleware(
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(history.router, prefix="/api", tags=["History"])
 app.include_router(models.router, prefix="/api", tags=["Models"])
+
+# Serve uploaded assets for in-app previews
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 @app.get("/")
 async def root():

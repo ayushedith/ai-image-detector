@@ -13,6 +13,7 @@ export default function HomePage() {
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   return (
     <div className="min-h-screen text-foreground relative overflow-hidden">
@@ -42,7 +43,10 @@ export default function HomePage() {
                   <Shield className="w-5 h-5 text-primary" />
                 </div>
               </div>
-              <ImageUpload onAnalysisComplete={setAnalysisId} />
+              <ImageUpload
+                onAnalysisComplete={(id) => setAnalysisId(id)}
+                onPreviewReady={setPreviewUrl}
+              />
             </div>
 
             <div className="rounded-2xl border border-border/60 bg-secondary/60 backdrop-blur-xl p-4">
@@ -101,7 +105,7 @@ export default function HomePage() {
           {/* RIGHT: Results */}
           <section className="col-span-12 lg:col-span-4">
             {analysisId ? (
-              <AnalysisResults analysisId={analysisId} />
+              <AnalysisResults analysisId={analysisId} fallbackPreview={previewUrl} />
             ) : (
               <div className="rounded-2xl border border-dashed border-border/70 bg-card/60 backdrop-blur-xl p-8 text-center h-full flex flex-col items-center justify-center">
                 <p className="text-xs tracking-[0.2em] text-muted-foreground">AWAITING EVIDENCE</p>
@@ -116,7 +120,10 @@ export default function HomePage() {
       {showHistory && (
         <HistorySidebar
           onClose={() => setShowHistory(false)}
-          onSelectAnalysis={setAnalysisId}
+          onSelectAnalysis={(id) => {
+            setAnalysisId(id)
+            setPreviewUrl(null)
+          }}
         />
       )}
 
