@@ -34,6 +34,7 @@ export interface Layer {
 
 export interface AnalysisResult {
   id: string
+  filename: string
   verdict: 'real' | 'suspicious' | 'edited' | 'fake'
   confidence: number
   overall_score: number
@@ -53,6 +54,7 @@ export interface AnalysisResult {
   }
   created_at: string
   processing_time: number
+  image_url?: string | null
 }
 
 export interface HistoryItem {

@@ -5,6 +5,7 @@ from app.db.models import Analysis
 from app.schemas.analysis import AnalysisResponse
 from app.services.detector import ImageDetector
 from app.services.forensics import ForensicAnalyzer
+from app.core.config import settings
 import time
 import uuid
 import os
@@ -33,9 +34,9 @@ async def analyze_image(
     # Save uploaded file
     file_id = str(uuid.uuid4())
     file_ext = os.path.splitext(image.filename)[1]
-    file_path = f"uploads/{file_id}{file_ext}"
+    file_path = f"{settings.UPLOAD_DIR}/{file_id}{file_ext}"
     
-    os.makedirs("uploads", exist_ok=True)
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
@@ -81,11 +82,14 @@ async def analyze_image(
         
         processing_time = time.time() - start_time
         
+        image_url = f"/uploads/{file_id}{file_ext}"
+
         # Save to database
         analysis = Analysis(
             id=file_id,
             filename=image.filename,
             file_path=file_path,
+            thumbnail_url=image_url,
             verdict=verdict,
             confidence=confidence,
             overall_score=overall_score,
@@ -106,6 +110,7 @@ async def analyze_image(
         
         return {
             "id": analysis.id,
+            "filename": analysis.filename,
             "verdict": analysis.verdict,
             "confidence": analysis.confidence,
             "overall_score": analysis.overall_score,
@@ -117,7 +122,8 @@ async def analyze_image(
             },
             "metadata": analysis.metadata,
             "processing_time": analysis.processing_time,
-            "created_at": analysis.created_at
+            "created_at": analysis.created_at,
+            "image_url": image_url
         }
         
     except Exception as e:
@@ -137,6 +143,7 @@ async def get_analysis(analysis_id: str, db: Session = Depends(get_db)):
     
     return {
         "id": analysis.id,
+        "filename": analysis.filename,
         "verdict": analysis.verdict,
         "confidence": analysis.confidence,
         "overall_score": analysis.overall_score,
@@ -148,5 +155,6 @@ async def get_analysis(analysis_id: str, db: Session = Depends(get_db)):
         },
         "metadata": analysis.metadata,
         "processing_time": analysis.processing_time,
-        "created_at": analysis.created_at
+        "created_at": analysis.created_at,
+        "image_url": analysis.thumbnail_url or f"/uploads/{os.path.basename(analysis.file_path)}"
     }

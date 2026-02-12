@@ -9,9 +9,10 @@ import Image from 'next/image'
 
 interface Props {
   onAnalysisComplete: (analysisId: string) => void
+  onPreviewReady?: (previewUrl: string | null) => void
 }
 
-export function ImageUpload({ onAnalysisComplete }: Props) {
+export function ImageUpload({ onAnalysisComplete, onPreviewReady }: Props) {
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
@@ -31,8 +32,10 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
     const file = acceptedFiles[0]
     if (!file) return
 
+    const previewUrl = URL.createObjectURL(file)
     setFileName(file.name)
-    setPreview(URL.createObjectURL(file))
+    setPreview(previewUrl)
+    onPreviewReady?.(previewUrl)
     setErrorDetail(null)
 
     const formData = new FormData()
@@ -95,7 +98,7 @@ export function ImageUpload({ onAnalysisComplete }: Props) {
             <p className="text-[11px] text-destructive font-mono">{(error as Error).message}</p>
             {errorDetail && <p className="text-[11px] text-muted-foreground">{errorDetail}</p>}
             <button
-              onClick={() => { setPreview(null); setFileName(''); setErrorDetail(null); }}
+              onClick={() => { setPreview(null); onPreviewReady?.(null); setFileName(''); setErrorDetail(null); }}
               className="mt-2 border border-destructive text-destructive px-4 py-2 font-mono text-[11px] font-bold rounded-lg hover:bg-destructive hover:text-foreground transition"
             >
               RETRY

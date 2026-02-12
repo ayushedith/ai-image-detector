@@ -4,16 +4,17 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format, formatDistanceToNow } from 'date-fns'
 import { getAnalysis } from '@/lib/api'
-import { Shield, Download, Share2, Copy, Check, Loader2, AlertTriangle, BarChart2, Clock3, Info } from 'lucide-react'
+import { Shield, Download, Share2, Copy, Check, AlertTriangle, BarChart2, Clock3, Info } from 'lucide-react'
 import { verdictTheme } from '@/lib/utils'
 import { ForensicRadar } from './ForensicRadar'
 import { LayerDetails } from './LayerDetails'
 
 interface Props {
   analysisId: string
+  fallbackPreview?: string | null
 }
 
-export function AnalysisResults({ analysisId }: Props) {
+export function AnalysisResults({ analysisId, fallbackPreview }: Props) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['analysis', analysisId],
     queryFn: () => getAnalysis(analysisId),
@@ -49,6 +50,20 @@ export function AnalysisResults({ analysisId }: Props) {
     if (!data) return ''
     return `TruthLens verdict: ${data.verdict.toUpperCase()} (${Math.round(data.confidence * 100)}% confidence). File ${data.metadata.file_info.format}, ${Math.round(data.metadata.file_info.size / 1024)}KB, ${data.metadata.file_info.dimensions[0]}x${data.metadata.file_info.dimensions[1]}. Processing time ${data.processing_time.toFixed(2)}s.`
   }, [data])
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+  const displayImage = useMemo(() => {
+    if (!data) return fallbackPreview || null
+    return data.image_url || fallbackPreview || null
+  }, [data, fallbackPreview])
+
+  const normalizedImage = useMemo(() => {
+    if (!displayImage) return null
+    if (displayImage.startsWith('http') || displayImage.startsWith('blob:') || displayImage.startsWith('data:')) {
+      return displayImage
+    }
+    return `${apiBase}${displayImage}`
+  }, [apiBase, displayImage])
 
   const handleCopy = async () => {
     if (!summaryText) return
@@ -94,6 +109,30 @@ export function AnalysisResults({ analysisId }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-border/80 bg-card/80 backdrop-blur-xl overflow-hidden shadow-[0_12px_36px_rgba(33,40,66,0.24)]">
+        {normalizedImage ? (
+          <div className="relative h-72 w-full">
+            <img src={normalizedImage} alt={data.filename || 'Analyzed image'} className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0f1224]/70 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center gap-3">
+              <div className={`h-12 w-12 rounded-xl border ${palette.iconBorder} bg-gradient-to-br ${palette.iconBg} flex items-center justify-center text-xl font-bold`} style={{fontFamily: 'Archivo Black'}}>
+                {palette.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs tracking-[0.18em] text-muted-foreground">SUBJECT</p>
+                <p className="text-sm font-semibold text-foreground truncate">{data.filename || 'Uploaded asset'}</p>
+                <p className="text-[11px] text-muted-foreground">{data.metadata.file_info.format} · {Math.round(data.metadata.file_info.size / 1024)} KB · {data.metadata.file_info.dimensions[0]} × {data.metadata.file_info.dimensions[1]}</p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${palette.badgeBorder} ${palette.badgeBg}`}>
+                {data.verdict.toUpperCase()}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="h-72 w-full flex items-center justify-center text-muted-foreground">No visual available</div>
+        )}
+      </div>
+
       <div className="rounded-2xl border border-border/80 bg-card/80 backdrop-blur-xl p-5 shadow-[0_12px_36px_rgba(33,40,66,0.24)]">
         <div className="flex items-start gap-4">
           <div className={`h-12 w-12 rounded-xl border ${palette.iconBorder} bg-gradient-to-br ${palette.iconBg} flex items-center justify-center text-xl font-bold`} style={{fontFamily: 'Archivo Black'}}>
