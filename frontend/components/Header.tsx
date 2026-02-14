@@ -33,6 +33,7 @@ export function Header({ onHistoryClick, onSettingsClick }: Props) {
           <nav className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/" className="px-3 py-2 rounded-md hover:bg-primary/10 hover:text-foreground transition">Detector</Link>
             <Link href="/about" className="px-3 py-2 rounded-md hover:bg-primary/10 hover:text-foreground transition">About</Link>
+            <Link href="/learn" className="px-3 py-2 rounded-md hover:bg-primary/10 hover:text-foreground transition">How it works</Link>
             <button onClick={onHistoryClick} className="px-3 py-2 rounded-md hover:bg-primary/10 hover:text-foreground transition">History</button>
             <button onClick={onSettingsClick} className="px-3 py-2 rounded-md hover:bg-primary/10 hover:text-foreground transition">Settings</button>
           </nav>
@@ -67,6 +68,7 @@ export function Header({ onHistoryClick, onSettingsClick }: Props) {
           <div className="px-6 py-3 space-y-2">
             <Link href="/" className="block px-3 py-2 rounded-md hover:bg-primary/10" onClick={() => setMobileOpen(false)}>Detector</Link>
             <Link href="/about" className="block px-3 py-2 rounded-md hover:bg-primary/10" onClick={() => setMobileOpen(false)}>About</Link>
+            <Link href="/learn" className="block px-3 py-2 rounded-md hover:bg-primary/10" onClick={() => setMobileOpen(false)}>How it works</Link>
             <button onClick={() => { onHistoryClick(); setMobileOpen(false) }} className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10">History</button>
             <button onClick={() => { onSettingsClick(); setMobileOpen(false) }} className="w-full text-left px-3 py-2 rounded-md hover:bg-primary/10">Settings</button>
             <Link href="/" className="block px-3 py-2 rounded-md border border-primary/50 bg-primary text-primary-foreground text-center" onClick={() => setMobileOpen(false)}>Launch</Link>
